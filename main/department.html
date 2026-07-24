@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ведомство — State Forms</title>
     <link rel="icon" type="image/png" href="favicon.png?v=1">
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
     <nav class="nav">
@@ -84,57 +84,40 @@
             if (!dd.contains(e.target) && e.target !== authBtn) dd.classList.remove('open');
         });
 
-        const deptsRes = await fetch('/api/departments');
-        const depts = await deptsRes.json();
-
         const container = document.getElementById('dept-content');
 
-        if (data.user.department_id) {
-            const deptRes = await fetch(`/api/departments/${data.user.department_id}`);
-            const dept = await deptRes.json();
+        if (!data.user.department_id) {
             container.innerHTML = `
-                <div class="dept-header" style="border-left: 4px solid ${dept.color}">
-                    <h1 class="dept-header__title">${dept.name}</h1>
-                    <span class="dept-header__short">${dept.short_name}</span>
+                <div class="dept-empty">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M3 7v14M21 7v14M6 11h.01M6 15h.01M6 19h.01M10 11h.01M10 15h.01M10 19h.01M14 11h.01M14 15h.01M14 19h.01M18 11h.01M18 15h.01M18 19h.01M9 7a3 3 0 116 0v0a3 3 0 01-6 0z" stroke="var(--slate)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <h2>Ведомство не назначено</h2>
+                <p>Обратитесь к Developer для назначения ведомства.</p>
                 </div>
-                <div class="dept-members">
-                    <h2 class="dept-members__title">Участники (${dept.members.length})</h2>
-                    <div class="dept-members__list">
-                    ${dept.members.map(m => `
-                        <div class="dept-member">
-                        <img class="dept-member__avatar" src="${m.avatar ? `https://cdn.discordapp.com/avatars/${m.discord_id}/${m.avatar}.png?size=64` : `https://cdn.discordapp.com/embed/avatars/0.png`}" alt="">
-                        <span class="dept-member__name">${m.username}</span>
-                        <span class="dept-member__role">${m.role}</span>
-                        </div>
-                    `).join('')}
-                    </div>
-                </div>
-                <button class="btn btn--ghost" onclick="leaveDept()">Покинуть ведомство</button>
             `;
-        } else {
-            container.innerHTML = `
-                <h1 class="dept-page__title">Выберите ведомство</h1>
-                <p class="dept-page__desc">Вы ещё не состоите ни в одном ведомстве. Выберите из списка ниже.</p>
-                <div class="dept-grid">
-                ${depts.map(d => `
-                    <button class="dept-card" style="border-left: 4px solid ${d.color}" onclick="joinDept(${d.id})">
-                    <span class="dept-card__short" style="color: ${d.color}">${d.short_name}</span>
-                    <span class="dept-card__name">${d.name}</span>
-                    </button>
+            return;
+        }
+
+        const deptRes = await fetch(`/api/departments/${data.user.department_id}`);
+        const dept = await deptRes.json();
+
+        container.innerHTML = `
+            <div class="dept-header" style="border-left: 4px solid ${dept.color}">
+                <h1 class="dept-header__title">${dept.name}</h1>
+                <span class="dept-header__short">${dept.short_name}</span>
+            </div>
+            <div class="dept-members">
+                <h2 class="dept-members__title">Участники (${dept.members.length})</h2>
+                <div class="dept-members__list">
+                ${dept.members.map(m => `
+                    <div class="dept-member">
+                    <img class="dept-member__avatar" src="${m.avatar ? `https://cdn.discordapp.com/avatars/${m.discord_id}/${m.avatar}.png?size=64` : `https://cdn.discordapp.com/embed/avatars/0.png`}" alt="">
+                    <span class="dept-member__name">${m.username}</span>
+                    <span class="dept-member__role">${m.role}</span>
+                    </div>
                 `).join('')}
                 </div>
-            `;
-        }
-    }
-
-    async function joinDept(id) {
-        await fetch(`/api/departments/${id}/join`, { method: 'PUT' });
-        window.location.reload();
-    }
-
-    async function leaveDept() {
-        await fetch('/api/departments/0/join', { method: 'PUT' });
-        window.location.reload();
+            </div>
+        `;
     }
 
     init();

@@ -30,6 +30,17 @@ async function checkAuth() {
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     `;
 
+    const dropdown = document.getElementById('nav-dropdown');
+    authBtn.onclick = (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('open');
+    };
+    document.addEventListener('click', (e) => {
+      if (!dropdown.contains(e.target) && e.target !== authBtn) {
+        dropdown.classList.remove('open');
+      }
+    });
+
     const roleLabels = { user: 'Пользователь', leader: 'Лидер', developer: 'Developer' };
     document.getElementById('dropdown-role').textContent = roleLabels[user.role] || 'Пользователь';
 
@@ -47,6 +58,12 @@ async function checkAuth() {
         heroBtn.innerHTML = `
           <svg width="20" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M3 7v14M21 7v14M6 11h.01M6 15h.01M6 19h.01M10 11h.01M10 15h.01M10 19h.01M14 11h.01M14 15h.01M14 19h.01M18 11h.01M18 15h.01M18 19h.01M9 7a3 3 0 116 0v0a3 3 0 01-6 0z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Открыть ведомство
+        `;
+      } else if (user.role === 'developer') {
+        heroBtn.href = '/admin';
+        heroBtn.innerHTML = `
+          <svg width="20" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Админ панель
         `;
       } else {
         heroBtn.href = '#profile';
@@ -69,19 +86,5 @@ async function checkAuth() {
     console.error('Auth check failed:', err);
   }
 }
-
-const authBtn = document.getElementById('auth-btn');
-const dropdown = document.getElementById('nav-dropdown');
-
-authBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  dropdown.classList.toggle('open');
-});
-
-document.addEventListener('click', (e) => {
-  if (!dropdown.contains(e.target) && e.target !== authBtn) {
-    dropdown.classList.remove('open');
-  }
-});
 
 checkAuth();

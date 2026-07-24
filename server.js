@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 const mysql = require('mysql2/promise');
 const path = require('path');
 
@@ -72,8 +73,21 @@ db.getConnection()
 
 app.set('trust proxy', 1);
 
+const sessionStore = new MySQLStore({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME,
+  port: parseInt(process.env.DB_PORT) || 3306,
+  clearExpired: true,
+  checkExpirationInterval: 900000,
+  expiration: 7 * 24 * 60 * 60 * 1000
+});
+
 app.use(session({
+  key: 'state_forms_sid',
   secret: process.env.SESSION_SECRET,
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -171,7 +185,11 @@ app.get('/api/db-check', async (req, res) => {
 
 app.get('/api/users', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT id, discord_id, username, avatar, role, created_at FROM users ORDER BY created_at DESC');
+    const [rows] = await db.execute(`
+      SELECT u.id, u.discord_id, u.username, u.avatar, u.role, u.department_id,
+             d.name as department_name, d.short_name as department_short, d.color as department_color
+      FROM users u LEFT JOIN departments d ON u.department_id = d.id
+      ORDER BY u.created_at DESC`);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -189,11 +207,27 @@ app.get('/api/users/count', async (req, res) => {
 
 app.put('/api/users/:id/role', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
-  const [caller] = await db.execute('SELECT role FROM users WHERE discord_id = ?', [req.session.user.id]);
+  const [caller] = await db.execute('SELECT role, id FROM users WHERE discord_id = ?', [req.session.user.id]);
   if (!caller.length || caller[0].role !== 'developer') return res.status(403).json({ error: 'Forbidden' });
+  if (caller[0].id == req.params.id) return res.status(403).json({ error: 'Cannot change own role' });
   const { role } = req.body;
   if (!['user', 'leader', 'developer'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
-  await db.execute('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
+  if (role !== 'leader') {
+    await db.execute('UPDATE users SET role = ?, department_id = NULL WHERE id = ?', [role, req.params.id]);
+  } else {
+    await db.execute('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
+  }
+  res.json({ success: true });
+});
+
+app.put('/api/users/:id/department', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  const [caller] = await db.execute('SELECT role FROM users WHERE discord_id = ?', [req.session.user.id]);
+  if (!caller.length || caller[0].role !== 'developer') return res.status(403).json({ error: 'Forbidden' });
+  const [target] = await db.execute('SELECT role FROM users WHERE id = ?', [req.params.id]);
+  if (!target.length || target[0].role !== 'leader') return res.status(403).json({ error: 'Can only assign department to leader' });
+  const { department_id } = req.body;
+  await db.execute('UPDATE users SET department_id = ? WHERE id = ?', [department_id || null, req.params.id]);
   res.json({ success: true });
 });
 
@@ -216,15 +250,6 @@ app.get('/api/departments/:id', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-app.put('/api/departments/:id/join', async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
-  const [user] = await db.execute('SELECT role FROM users WHERE discord_id = ?', [req.session.user.id]);
-  if (!user.length || !['leader', 'developer'].includes(user[0].role)) return res.status(403).json({ error: 'Forbidden' });
-  const deptId = req.params.id === '0' ? null : req.params.id;
-  await db.execute('UPDATE users SET department_id = ? WHERE discord_id = ?', [deptId, req.session.user.id]);
-  res.json({ success: true });
 });
 
 app.use(express.static(path.join(__dirname, 'main')));

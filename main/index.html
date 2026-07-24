@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>State Forms — Кастомные формы с отправкой в Discord</title>
     <link rel="icon" type="image/png" href="favicon.png?v=1">
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 
@@ -32,14 +32,14 @@
             <div class="nav__dropdown-header">
                 <span class="nav__dropdown-role" id="dropdown-role">Пользователь</span>
             </div>
-            <button class="nav__dropdown-item" id="btn-department" style="display:none" type="button">
+            <a href="/department" class="nav__dropdown-item" id="btn-department" style="display:none">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M3 7v14M21 7v14M6 11h.01M6 15h.01M6 19h.01M10 11h.01M10 15h.01M10 19h.01M14 11h.01M14 15h.01M14 19h.01M18 11h.01M18 15h.01M18 19h.01M9 7a3 3 0 116 0v0a3 3 0 01-6 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Открыть ведомство
-            </button>
-            <button class="nav__dropdown-item" id="btn-admin" style="display:none" type="button">
+            </a>
+            <a href="/admin" class="nav__dropdown-item" id="btn-admin" style="display:none">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Админ панель
-            </button>
+            </a>
             <div class="nav__dropdown-divider"></div>
             <a href="/auth/logout" class="nav__dropdown-item nav__dropdown-item--logout">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -379,7 +379,7 @@
         </div>
     </footer>
 
-    <script src="script.js?v=10"></script>
+    <script src="script.js?v=13"></script>
 
 </body>
 </html>
