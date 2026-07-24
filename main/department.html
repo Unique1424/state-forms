@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ведомство — State Forms</title>
+    <link rel="icon" type="image/png" href="favicon.png?v=1">
+    <link rel="stylesheet" href="style.css?v=10">
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav__inner">
+        <a href="/" class="nav__logo">
+            <img src="../src/logo.png" alt="State Forms" class="nav__logo-img">
+            <span class="nav__logo-text">State Forms</span>
+        </a>
+        <div class="nav__links">
+            <a href="/">Главная</a>
+            <a href="/#features">Возможности</a>
+        </div>
+        <div class="nav__user" id="nav-user" style="display:none">
+            <button class="nav__btn nav__btn--discord" id="auth-btn" type="button">
+            <span id="auth-label">Загрузка...</span>
+            </button>
+            <div class="nav__dropdown" id="nav-dropdown">
+            <div class="nav__dropdown-header">
+                <span class="nav__dropdown-role" id="dropdown-role">Пользователь</span>
+            </div>
+            <a href="/department" class="nav__dropdown-item" id="btn-department" style="display:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M3 7v14M21 7v14M6 11h.01M6 15h.01M6 19h.01M10 11h.01M10 15h.01M10 19h.01M14 11h.01M14 15h.01M14 19h.01M18 11h.01M18 15h.01M18 19h.01M9 7a3 3 0 116 0v0a3 3 0 01-6 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Открыть ведомство
+            </a>
+            <a href="/admin" class="nav__dropdown-item" id="btn-admin" style="display:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Админ панель
+            </a>
+            <div class="nav__dropdown-divider"></div>
+            <a href="/auth/logout" class="nav__dropdown-item nav__dropdown-item--logout">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Выйти
+            </a>
+            </div>
+        </div>
+        <a href="/auth/discord" id="auth-btn-guest" class="nav__btn nav__btn--discord" style="display:none">
+            <svg width="18" height="14" viewBox="0 0 24 18" fill="none"><path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="white"/></svg>
+            Войти
+        </a>
+        </div>
+    </nav>
+
+    <main class="dept-page">
+        <div class="dept-page__inner" id="dept-content">
+            <div class="dept-loading">Загрузка...</div>
+        </div>
+    </main>
+
+    <script>
+    async function init() {
+        const res = await fetch('/api/me');
+        const data = await res.json();
+        if (!data.loggedIn || !['leader', 'developer'].includes(data.user.role)) {
+            window.location.href = '/';
+            return;
+        }
+
+        document.getElementById('nav-user').style.display = 'block';
+        const authBtn = document.getElementById('auth-btn');
+        const avatarUrl = data.user.avatar
+            ? `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png?size=64`
+            : `https://cdn.discordapp.com/embed/avatars/${parseInt(data.user.discriminator || 0) % 5}.png`;
+        authBtn.innerHTML = `<img src="${avatarUrl}" width="24" height="24" style="border-radius:50%"><span>${data.user.username}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+        const roleLabels = { user: 'Пользователь', leader: 'Лидер', developer: 'Developer' };
+        document.getElementById('dropdown-role').textContent = roleLabels[data.user.role] || 'Пользователь';
+        if (data.user.role === 'leader') document.getElementById('btn-department').style.display = 'flex';
+        if (data.user.role === 'developer') document.getElementById('btn-admin').style.display = 'flex';
+
+        authBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('nav-dropdown').classList.toggle('open');
+        });
+        document.addEventListener('click', (e) => {
+            const dd = document.getElementById('nav-dropdown');
+            if (!dd.contains(e.target) && e.target !== authBtn) dd.classList.remove('open');
+        });
+
+        const deptsRes = await fetch('/api/departments');
+        const depts = await deptsRes.json();
+
+        const container = document.getElementById('dept-content');
+
+        if (data.user.department_id) {
+            const deptRes = await fetch(`/api/departments/${data.user.department_id}`);
+            const dept = await deptRes.json();
+            container.innerHTML = `
+                <div class="dept-header" style="border-left: 4px solid ${dept.color}">
+                    <h1 class="dept-header__title">${dept.name}</h1>
+                    <span class="dept-header__short">${dept.short_name}</span>
+                </div>
+                <div class="dept-members">
+                    <h2 class="dept-members__title">Участники (${dept.members.length})</h2>
+                    <div class="dept-members__list">
+                    ${dept.members.map(m => `
+                        <div class="dept-member">
+                        <img class="dept-member__avatar" src="${m.avatar ? `https://cdn.discordapp.com/avatars/${m.discord_id}/${m.avatar}.png?size=64` : `https://cdn.discordapp.com/embed/avatars/0.png`}" alt="">
+                        <span class="dept-member__name">${m.username}</span>
+                        <span class="dept-member__role">${m.role}</span>
+                        </div>
+                    `).join('')}
+                    </div>
+                </div>
+                <button class="btn btn--ghost" onclick="leaveDept()">Покинуть ведомство</button>
+            `;
+        } else {
+            container.innerHTML = `
+                <h1 class="dept-page__title">Выберите ведомство</h1>
+                <p class="dept-page__desc">Вы ещё не состоите ни в одном ведомстве. Выберите из списка ниже.</p>
+                <div class="dept-grid">
+                ${depts.map(d => `
+                    <button class="dept-card" style="border-left: 4px solid ${d.color}" onclick="joinDept(${d.id})">
+                    <span class="dept-card__short" style="color: ${d.color}">${d.short_name}</span>
+                    <span class="dept-card__name">${d.name}</span>
+                    </button>
+                `).join('')}
+                </div>
+            `;
+        }
+    }
+
+    async function joinDept(id) {
+        await fetch(`/api/departments/${id}/join`, { method: 'PUT' });
+        window.location.reload();
+    }
+
+    async function leaveDept() {
+        await fetch('/api/departments/0/join', { method: 'PUT' });
+        window.location.reload();
+    }
+
+    init();
+    </script>
+</body>
+</html>
