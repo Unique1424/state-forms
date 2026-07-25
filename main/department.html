@@ -72,9 +72,10 @@
     }
 
     async function loadForms() {
-        const res = await fetch('/api/forms');
+        const res = await fetch(`/api/forms?department_id=${deptData.id}`, { cache: 'no-store' });
         if (res.ok) formsList = await res.json();
         else formsList = [];
+        return formsList;
     }
 
     async function renderFormsTab(content) {
@@ -303,12 +304,12 @@
         const embed_color = document.getElementById('form-color').value;
         if (!name) { alert('Введите название формы'); return; }
         const slug = translit(name);
-        const body = { name, webhook_url, slug, message_template, embed_color, fields: editingFields };
+        const body = { name, webhook_url, slug, message_template, embed_color, fields: editingFields, department_id: deptData.id };
         const url = currentForm ? `/api/forms/${currentForm.id}` : '/api/forms';
         const method = currentForm ? 'PUT' : 'POST';
         const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         const data = await res.json();
-        if (data.success) closeFormEditor();
+        if (data.success) { formsList = []; closeFormEditor(); }
         else alert(data.error || 'Ошибка сохранения');
     }
 
@@ -341,7 +342,7 @@
         if (!confirm('Удалить форму?')) return;
         const res = await fetch(`/api/forms/${id}`, { method: 'DELETE' });
         const data = await res.json();
-        if (data.success) closeFormEditor();
+        if (data.success) { formsList = []; closeFormEditor(); }
     }
 
     let editingDept = null;
@@ -375,6 +376,7 @@
         const res = await fetch(`/api/departments/${id}`);
         deptData = await res.json();
         userData = { ...userData, department_id: deptData.id };
+        formsList = [];
         document.getElementById('dept-content').className = 'dept-page__layout';
         renderLayout();
     }
@@ -542,6 +544,7 @@
 
     let searchTimeout;
     let allUsersCache = null;
+
     function searchDeputy() {
         clearTimeout(searchTimeout);
         const query = document.getElementById('deputy-search').value.trim().toLowerCase();
@@ -552,57 +555,45 @@
                 const res = await fetch('/api/users');
                 allUsersCache = await res.json();
             }
-            const matches = allUsersCache.filter(u => u.username.toLowerCase().includes(query) || u.discord_id.includes(query));
+            const matches = allUsersCache.filter(u => u.role === 'user' && (u.username.toLowerCase().includes(query) || u.discord_id.includes(query)));
             if (!matches.length) {
                 resultsEl.innerHTML = '<div class="modal__empty">Не найдено</div>';
                 return;
             }
-            resultsEl.innerHTML = matches.map(m => {
-                const isDeputy = m.role === 'deputy_leader' && m.department_id === deptData.id;
-                return `
-                    <div class="modal__item">
-                    <img class="modal__avatar" src="${m.avatar ? `https://cdn.discordapp.com/avatars/${m.discord_id}/${m.avatar}.png?size=32` : `https://cdn.discordapp.com/embed/avatars/0.png`}" alt="">
-                    <div class="modal__user-info">
-                        <span class="modal__name">${m.username}</span>
-                        <span class="modal__discord-id">${m.discord_id}</span>
-                    </div>
-                    ${isDeputy
-                        ? '<span class="dept-member__badge dept-member__badge--deputy">Зам. лидера</span>'
-                        : `<button class="btn btn--primary btn--sm" onclick="assignDeputy(${m.id})">Назначить</button>`
-                    }
-                    </div>
-                `;
-            }).join('');
+            resultsEl.innerHTML = matches.map(m => `
+                <div class="modal__item">
+                <img class="modal__avatar" src="${m.avatar ? `https://cdn.discordapp.com/avatars/${m.discord_id}/${m.avatar}.png?size=32` : `https://cdn.discordapp.com/embed/avatars/0.png`}" alt="">
+                <div class="modal__user-info">
+                    <span class="modal__name">${m.username}</span>
+                    <span class="modal__discord-id">${m.discord_id}</span>
+                </div>
+                <button class="btn btn--primary btn--sm" onclick="assignDeputy(${m.id})">Назначить</button>
+                </div>
+            `).join('');
         }, 200);
     }
 
-    async function assignDeputy(userId) {
+    async function deputyAction(userId, action) {
         await fetch(`/api/users/${userId}/deputy`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'assign' })
+            body: JSON.stringify({ action })
         });
         allUsersCache = null;
         closeDeputyModal();
-        const deptRes = await fetch(`/api/departments/${deptData.id}`);
-        deptData = await deptRes.json();
+        deptData = await (await fetch(`/api/departments/${deptData.id}`)).json();
         renderTab();
     }
 
-    async function removeDeputy(userId) {
-        await fetch(`/api/users/${userId}/deputy`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'remove' })
-        });
-        allUsersCache = null;
-        const deptRes = await fetch(`/api/departments/${deptData.id}`);
-        deptData = await deptRes.json();
-        renderTab();
+    function assignDeputy(userId) { return deputyAction(userId, 'assign'); }
+    function removeDeputy(userId) { return deputyAction(userId, 'remove'); }
+
+    async function copyText(text) {
+        await navigator.clipboard.writeText(text);
     }
 
     async function copyDiscordId(el, id) {
-        await navigator.clipboard.writeText(id);
+        await copyText(id);
         const orig = el.textContent;
         el.textContent = 'Скопировано!';
         el.classList.add('copied');
@@ -611,25 +602,14 @@
 
     async function copyFormUrl(deptSlug, formSlug) {
         const url = `${window.location.origin}/${deptSlug}/${formSlug}`;
-        await navigator.clipboard.writeText(url);
+        await copyText(url);
         alert('Ссылка скопирована: ' + url);
     }
 
     async function copyFormLink() {
         const input = document.getElementById('form-link-input');
-        await navigator.clipboard.writeText(input.value);
+        await copyText(input.value);
         alert('Ссылка скопирована: ' + input.value);
-    }
-
-    async function toggleDeputy(userId, value) {
-        await fetch(`/api/users/${userId}/deputy`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_deputy: value })
-        });
-        const deptRes = await fetch(`/api/departments/${deptData.id}`);
-        deptData = await deptRes.json();
-        renderTab();
     }
 
     init();

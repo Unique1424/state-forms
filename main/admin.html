@@ -157,13 +157,14 @@
             <td class="admin-mono admin-copy" onclick="copyId(this, '${u.discord_id}')" title="Нажми чтобы скопировать">${u.discord_id}</td>
             <td>
                 <select class="admin-select admin-select--sm" onchange="changeRole(${u.id}, this.value)" ${u.discord_id === currentDiscordId ? 'disabled' : ''}>
-                <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
-                <option value="leader" ${u.role === 'leader' ? 'selected' : ''}>leader</option>
-                <option value="developer" ${u.role === 'developer' ? 'selected' : ''}>developer</option>
+                <option value="user" ${u.role === 'user' ? 'selected' : ''}>Пользователь</option>
+                <option value="deputy_leader" ${u.role === 'deputy_leader' ? 'selected' : ''}>Заместитель лидера</option>
+                <option value="leader" ${u.role === 'leader' ? 'selected' : ''}>Лидер</option>
+                <option value="developer" ${u.role === 'developer' ? 'selected' : ''}>Developer</option>
                 </select>
             </td>
             <td>
-                <select class="admin-select admin-select--sm" onchange="changeDept(${u.id}, this.value)" ${u.role !== 'leader' ? 'disabled' : ''}>
+                <select class="admin-select admin-select--sm" onchange="changeDept(${u.id}, this.value)" ${!['leader', 'deputy_leader'].includes(u.role) ? 'disabled' : ''}>
                 <option value="">— нет —</option>
                 ${departments.map(d => `<option value="${d.id}" ${u.department_id == d.id ? 'selected' : ''}>${d.short_name}</option>`).join('')}
                 </select>

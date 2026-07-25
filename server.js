@@ -395,9 +395,10 @@ app.get('/api/forms', async (req, res) => {
     if (!['leader', 'deputy_leader', 'developer'].includes(caller[0].role)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    if (caller[0].role !== 'developer') {
+    const deptId = parseInt(req.query.department_id) || caller[0].department_id;
+    if (deptId) {
       query += ' WHERE f.department_id = ?';
-      params.push(caller[0].department_id);
+      params.push(deptId);
     }
     query += ' ORDER BY f.created_at DESC';
     const [rows] = await db.execute(query, params);
