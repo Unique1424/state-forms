@@ -41,10 +41,10 @@ async function checkAuth() {
       }
     });
 
-    const roleLabels = { user: 'Пользователь', leader: 'Лидер', developer: 'Developer' };
+    const roleLabels = { user: 'Пользователь', deputy_leader: 'Заместитель лидера', leader: 'Лидер', developer: 'Developer' };
     document.getElementById('dropdown-role').textContent = roleLabels[user.role] || 'Пользователь';
 
-    if (user.role === 'leader') {
+    if (['leader', 'deputy_leader', 'developer'].includes(user.role)) {
       document.getElementById('btn-department').style.display = 'flex';
     }
     if (user.role === 'developer') {
@@ -53,7 +53,7 @@ async function checkAuth() {
 
     const heroBtn = document.getElementById('hero-login-btn');
     if (heroBtn) {
-      if (user.role === 'leader') {
+      if (['leader', 'deputy_leader'].includes(user.role)) {
         heroBtn.href = '/department';
         heroBtn.innerHTML = `
           <svg width="20" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M3 7v14M21 7v14M6 11h.01M6 15h.01M6 19h.01M10 11h.01M10 15h.01M10 19h.01M14 11h.01M14 15h.01M14 19h.01M18 11h.01M18 15h.01M18 19h.01M9 7a3 3 0 116 0v0a3 3 0 01-6 0z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>

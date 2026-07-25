@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ панель — State Forms</title>
-    <link rel="icon" type="image/png" href="favicon.png?v=1">
-    <link rel="stylesheet" href="style.css?v=13">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="base.css?v=6">
+    <link rel="stylesheet" href="admin.css?v=1">
 </head>
 <body>
     <nav class="nav">
@@ -106,6 +107,7 @@
         authBtn.innerHTML = `<img src="${avatarUrl}" width="24" height="24" style="border-radius:50%"><span>${data.user.username}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         document.getElementById('dropdown-role').textContent = 'Developer';
         document.getElementById('btn-admin').style.display = 'flex';
+        document.getElementById('btn-department').style.display = 'flex';
 
         authBtn.addEventListener('click', (e) => {
             e.stopPropagation();
