@@ -1,3 +1,23 @@
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.theme-toggle');
+  if (!btn) return;
+  var el = document.documentElement;
+  el.classList.add('theme-transition');
+  void el.offsetHeight;
+  var next = el.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  el.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  setTimeout(function() {
+    el.classList.remove('theme-transition');
+  }, 350);
+});
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+  if (!localStorage.getItem('theme')) {
+    document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+  }
+});
+
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {

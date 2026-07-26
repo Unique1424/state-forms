@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Формы — State Forms</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="stylesheet" href="base.css?v=6">
-    <link rel="stylesheet" href="forms.css?v=1">
+    <link rel="stylesheet" href="base.css?v=8">
+    <link rel="stylesheet" href="forms.css?v=2">
+    <script>
+        (function() {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
     <nav class="nav">
@@ -50,6 +57,12 @@
             <svg width="18" height="14" viewBox="0 0 24 18" fill="none"><path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="white"/></svg>
             Войти
         </a>
+        <button class="theme-toggle" type="button" title="Переключить тему">
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        </div>
+    </nav>
         </div>
     </nav>
 
@@ -75,6 +88,7 @@
         }
 
         document.getElementById('nav-user').style.display = 'block';
+        document.getElementById('auth-btn-guest').style.display = 'none';
         const authBtn = document.getElementById('auth-btn');
         const avatarUrl = data.user.avatar
             ? `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png?size=64`
@@ -340,6 +354,21 @@
     }
 
     init();
+    </script>
+    <script>
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.theme-toggle');
+        if (!btn) return;
+        var el = document.documentElement;
+        el.classList.add('theme-transition');
+        void el.offsetHeight;
+        var next = el.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        el.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        setTimeout(function() {
+            el.classList.remove('theme-transition');
+        }, 350);
+    });
     </script>
 </body>
 </html>

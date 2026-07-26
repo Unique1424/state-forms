@@ -120,3 +120,19 @@
   .admin-assign { flex-direction: column; }
   .admin-input { width: 100%; }
 }
+
+/* === Dark Theme Admin === */
+[data-theme="dark"] .admin-input,
+[data-theme="dark"] .admin-select {
+  border-color: rgba(255,255,255,0.1);
+  background: #0D1117;
+  color: var(--ink);
+}
+
+[data-theme="dark"] .admin-table th {
+  border-bottom-color: rgba(255,255,255,0.06);
+}
+
+[data-theme="dark"] .admin-table td {
+  border-bottom-color: rgba(255,255,255,0.04);
+}

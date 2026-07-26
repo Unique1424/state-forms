@@ -739,3 +739,28 @@
   .features, .how, .access { padding: 80px 16px; }
   .footer__links { flex-direction: column; gap: 32px; }
 }
+
+/* === Dark Theme Home === */
+[data-theme="dark"] .preview__field-input { border-color: rgba(255,255,255,0.08); }
+[data-theme="dark"] .preview__discord { background: #1C2128; }
+[data-theme="dark"] .preview__discord-embed { background: #0D1117; }
+[data-theme="dark"] .preview__discord-header { color: var(--ink); }
+[data-theme="dark"] .preview__discord-embed-title { color: var(--ink); }
+[data-theme="dark"] .preview__discord-embed-value { color: #B0B8C4; }
+
+[data-theme="dark"] .how {
+  background: #010409;
+  color: var(--ink);
+}
+
+[data-theme="dark"] .step-visual {
+  background: #161B22;
+}
+
+[data-theme="dark"] .footer {
+  background: #010409;
+}
+
+[data-theme="dark"] .dept-member__badge--user {
+  background: rgba(255,255,255,0.04);
+}

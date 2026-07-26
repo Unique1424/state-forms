@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Форма — State Forms</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/base.css?v=6">
-    <link rel="stylesheet" href="/forms.css?v=7">
+    <link rel="stylesheet" href="/base.css?v=8">
+    <link rel="stylesheet" href="/forms.css?v=8">
+    <script>
+        (function() {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <style>
         body { background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%); min-height: 100vh; overflow-x: hidden; position: relative; }
         .floating-circles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
@@ -60,6 +67,15 @@
         @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        [data-theme="dark"] body { background: linear-gradient(135deg, #0D1117 0%, #161B22 100%); }
+        [data-theme="dark"] .form-view__card { background: rgba(22,27,34,0.95); }
+        [data-theme="dark"] .form-field input, [data-theme="dark"] .form-field textarea, [data-theme="dark"] .form-field select {
+            border-color: rgba(255,255,255,0.1); background: #0D1117; color: var(--ink);
+        }
+        [data-theme="dark"] .form-field input:focus, [data-theme="dark"] .form-field textarea:focus, [data-theme="dark"] .form-field select:focus {
+            background: #0D1117;
+        }
+        [data-theme="dark"] .circle { opacity: 0.06; }
     </style>
 </head>
 <body>
@@ -76,6 +92,10 @@
                 <img src="/src/logo.png" alt="State Forms" class="nav__logo-img">
                 <span class="nav__logo-text">State Forms</span>
             </a>
+            <button class="theme-toggle" type="button" title="Переключить тему">
+                <svg class="icon-moon" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg class="icon-sun" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
         </div>
     </nav>
 
@@ -84,6 +104,19 @@
     </main>
 
     <script>
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.theme-toggle');
+        if (!btn) return;
+        var el = document.documentElement;
+        el.classList.add('theme-transition');
+        void el.offsetHeight;
+        var next = el.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        el.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        setTimeout(function() {
+            el.classList.remove('theme-transition');
+        }, 350);
+    });
     async function init() {
         const path = window.location.pathname;
         const parts = path.split('/').filter(Boolean);
