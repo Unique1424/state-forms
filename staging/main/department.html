@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ведомство — State Forms</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="base.css?v=8">
+    <link rel="stylesheet" href="department.css?v=27">
+    <link rel="stylesheet" href="forms.css?v=10">
+    <script>
+        (function() {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav__inner">
+        <a href="/" class="nav__logo">
+            <img src="../src/logo.png" alt="State Forms" class="nav__logo-img">
+            <span class="nav__logo-text">State Forms</span>
+        </a>
+        <div class="nav__links">
+            <a href="/">Главная</a>
+            <a href="/#features">Возможности</a>
+        </div>
+        <div class="nav__user" id="nav-user" style="display:none">
+            <button class="nav__btn nav__btn--discord" id="auth-btn" type="button">
+            <span id="auth-label">Загрузка...</span>
+            </button>
+            <div class="nav__dropdown" id="nav-dropdown">
+            <div class="nav__dropdown-header">
+                <span class="nav__dropdown-role" id="dropdown-role">Пользователь</span>
+            </div>
+            <a href="/department" class="nav__dropdown-item" id="btn-department" style="display:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M3 7v14M21 7v14M6 11h.01M6 15h.01M6 19h.01M10 11h.01M10 15h.01M10 19h.01M14 11h.01M14 15h.01M14 19h.01M18 11h.01M18 15h.01M18 19h.01M9 7a3 3 0 116 0v0a3 3 0 01-6 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Открыть ведомство
+            </a>
+            <a href="/admin" class="nav__dropdown-item" id="btn-admin" style="display:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Админ панель
+            </a>
+            <div class="nav__dropdown-divider"></div>
+            <a href="/auth/logout" class="nav__dropdown-item nav__dropdown-item--logout">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Выйти
+            </a>
+            </div>
+        </div>
+        <a href="/auth/discord" id="auth-btn-guest" class="nav__btn nav__btn--discord" style="display:none">
+            <svg width="18" height="14" viewBox="0 0 24 18" fill="none"><path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="white"/></svg>
+            Войти
+        </a>
+        <button class="theme-toggle" type="button" title="Переключить тему">
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        </div>
+    </nav>
+        </div>
+    </nav>
+
+    <main class="dept-page">
+        <div class="dept-page__layout" id="dept-content">
+            <div class="dept-loading">Загрузка...</div>
+        </div>
+    </main>
+
+    <script>
+    (function() {
+      const saved = localStorage.getItem('theme');
+      const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+      if (!saved) localStorage.setItem('theme', theme);
+      const btn = document.getElementById('theme-toggle');
+      if (btn) btn.addEventListener('click', () => {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+      });
+    })();
+    let currentTab = 'members';
+    let deptData = null;
+    let userData = null;
+    const roleLabels = { user: 'Пользователь', deputy_leader: 'Заместитель лидера', leader: 'Лидер', developer: 'Developer' };
+    let formsList = [];
+    let currentForm = null;
+    let editingFields = [];
+    let formEditorMode = null;
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    async function loadForms() {
+        const res = await fetch(`/api/forms?department_id=${deptData.id}`, { cache: 'no-store' });
+        if (res.ok) formsList = await res.json();
+        else formsList = [];
+        return formsList;
+    }
+
+    async function renderFormsTab(content) {
+        if (formEditorMode) {
+            renderFormEditor(content);
+            return;
+        }
+        await loadForms();
+        const canCreate = ['leader', 'deputy_leader', 'developer'].includes(userData.role);
+        content.innerHTML = `
+            <div class="dept-content__header">
+                <h2 class="dept-content__title">Формы <span class="dept-content__count">${formsList.length}</span></h2>
+                ${canCreate ? `<button class="btn btn--primary" onclick="openFormEditor()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    Создать форму
+                </button>` : ''}
+            </div>
+            <div class="forms-grid">
+                ${formsList.length === 0 ? `
+                    <div class="dept-empty-tab">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="var(--slate)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="var(--slate)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <p>Форм пока нет</p>
+                    </div>
+                ` : formsList.map(f => `
+                    <div class="form-card" onclick="editForm(${f.id})">
+                        <div class="form-card__header">
+                            <h3 class="form-card__title">${f.name}</h3>
+                            ${f.slug ? `<button class="btn btn--ghost btn--sm btn--icon" onclick="event.stopPropagation();copyFormUrl('${f.department_short}', '${f.slug}')" title="Копировать ссылку">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/></svg>
+                            </button>` : ''}
+                        </div>
+                        <div class="form-card__meta">
+                            <span class="form-card__responses">${f.response_count} ответов</span>
+                            ${f.slug ? `<span class="form-card__url">/${f.department_short}/${f.slug}</span>` : ''}
+                            <span class="form-card__date">${new Date(f.created_at).toLocaleDateString('ru-RU')}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function openFormEditor() {
+        currentForm = null;
+        editingFields = [];
+        formEditorMode = 'create';
+        renderTab();
+    }
+
+    async function editForm(id) {
+        const res = await fetch(`/api/forms/${id}`);
+        if (!res.ok) return;
+        currentForm = await res.json();
+        editingFields = currentForm.fields || [];
+        formEditorMode = 'edit';
+        renderTab();
+    }
+
+    function closeFormEditor() {
+        formEditorMode = null;
+        currentForm = null;
+        editingFields = [];
+        renderTab();
+    }
+
+    function renderFormEditor(content) {
+        const isEdit = !!currentForm;
+        content.innerHTML = `
+            <div class="editor-header">
+                <button class="btn btn--ghost" onclick="closeFormEditor()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Назад
+                </button>
+                <h2 class="editor-title">${isEdit ? 'Редактирование формы' : 'Создание формы'}</h2>
+                <div class="editor-actions">
+                    ${isEdit ? `<button class="btn btn--danger" onclick="deleteForm(${currentForm.id})">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Удалить
+                    </button>` : ''}
+                    <button class="btn btn--ghost" onclick="previewWebhook()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+                        Предпросмотр
+                    </button>
+                    <button class="btn btn--primary" onclick="saveForm()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+            <div class="editor-body">
+                ${isEdit && currentForm.slug ? `
+                <div class="editor-section">
+                    <label class="editor-label">Ссылка на форму</label>
+                    <div class="editor-link-row">
+                        <input type="text" class="editor-input" value="${window.location.origin}/${deptData.short_name}/${currentForm.slug}" readonly id="form-link-input">
+                        <button class="btn btn--ghost" onclick="copyFormLink()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/></svg>
+                            Копировать
+                        </button>
+                    </div>
+                </div>
+                ` : ''}
+                <div class="editor-section">
+                    <label class="editor-label">Название формы</label>
+                    <input type="text" class="editor-input" id="form-name" value="${isEdit ? escapeHtml(currentForm.name) : ''}" placeholder="Введите название формы">
+                </div>
+                <div class="editor-section">
+                    <label class="editor-label">Ссылка на вебхук</label>
+                    <div class="editor-webhook-row">
+                        <input type="password" class="editor-input" id="form-webhook" value="${isEdit ? escapeHtml(currentForm.webhook_url || '') : ''}" placeholder="https://discord.com/api/webhooks/...">
+                        <button type="button" class="editor-webhook-toggle" onclick="toggleWebhook()" title="Показать/скрыть">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" id="webhook-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="editor-section">
+                    <label class="editor-label">Цвет embed</label>
+                    <div class="editor-color-row">
+                        <input type="color" class="editor-color-picker" id="form-color" value="${isEdit ? (currentForm.embed_color || '#5865F2') : '#5865F2'}">
+                        <input type="text" class="editor-input editor-color-hex" id="form-color-hex" value="${isEdit ? (currentForm.embed_color || '#5865F2') : '#5865F2'}" placeholder="#5865F2" maxlength="7">
+                        <div class="editor-color-preview" id="form-color-preview" style="background: ${isEdit ? (currentForm.embed_color || '#5865F2') : '#5865F2'}"></div>
+                    </div>
+                </div>
+                <div class="editor-section">
+                    <label class="editor-label">Текст сообщения</label>
+                    <textarea class="editor-input editor-textarea" id="form-message" placeholder="Текст перед embed. Используйте:&#10;{0}, {1} — ответ на поле&#10;role[ID] — упоминание роли&#10;channel[ID] — упоминание канала&#10;user[ID] — упоминание пользователя&#10;(текст)[URL] — кликабельная ссылка">${isEdit ? escapeHtml(currentForm.message_template || '') : ''}</textarea>
+                    <div class="editor-hint">
+                        <span class="editor-hint__item">{0}, {1} — ответы на поля</span>
+                        <span class="editor-hint__item">role[ID] — роль</span>
+                        <span class="editor-hint__item">channel[ID] — канал</span>
+                        <span class="editor-hint__item">user[ID] — пользователь</span>
+                        <span class="editor-hint__item">(текст)[URL] — ссылка</span>
+                    </div>
+                </div>
+                <div class="editor-section">
+                    <div class="editor-section__header">
+                        <label class="editor-label">Поля формы</label>
+                        <div class="field-add">
+                            <button class="btn btn--ghost btn--sm" onclick="addField('short_text')">+ Короткий текст</button>
+                            <button class="btn btn--ghost btn--sm" onclick="addField('long_text')">+ Длинный текст</button>
+                            <button class="btn btn--ghost btn--sm" onclick="addField('select')">+ Выбор ответа</button>
+                            <button class="btn btn--ghost btn--sm" onclick="addField('date')">+ Дата</button>
+                            <button class="btn btn--ghost btn--sm" onclick="addField('datetime')">+ Дата и время</button>
+                        </div>
+                    </div>
+                    <div class="fields-list" id="fields-list">
+                        ${renderFields()}
+                    </div>
+                </div>
+            </div>
+        `;
+        initColorPicker();
+    }
+
+    function toggleWebhook() {
+        const input = document.getElementById('form-webhook');
+        const eye = document.getElementById('webhook-eye');
+        if (input.type === 'password') {
+            input.type = 'text';
+            eye.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" stroke-width="2"/><line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2"/>';
+        } else {
+            input.type = 'password';
+            eye.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>';
+        }
+    }
+
+    function previewWebhook() {
+        const formName = document.getElementById('form-name').value.trim() || 'Без названия';
+        const color = document.getElementById('form-color')?.value || '#5865F2';
+        const msgTemplate = document.getElementById('form-message')?.value.trim() || '';
+
+        const sampleAnswers = {};
+        editingFields.forEach((f, i) => {
+            if (f.type === 'date') sampleAnswers[`field_${i}`] = '27.07.2026';
+            else if (f.type === 'datetime') sampleAnswers[`field_${i}`] = '27.07.2026 14:30';
+            else if (f.type === 'select' && f.options && f.options.length) sampleAnswers[`field_${i}`] = f.options[0];
+            else sampleAnswers[`field_${i}`] = 'Пример ответа';
+        });
+
+        let msgContent = '';
+        if (msgTemplate) {
+            msgContent = msgTemplate;
+            editingFields.forEach((f, i) => {
+                msgContent = msgContent.replace(new RegExp(`\\{${i}\\}`, 'g'), sampleAnswers[`field_${i}`] || '');
+                msgContent = msgContent.replace(new RegExp(`\\{name${i}\\}`, 'g'), f.label);
+            });
+            msgContent = msgContent.replace(/role\[(\d+)\]/g, '<@&$1>');
+            msgContent = msgContent.replace(/channel\[(\d+)\]/g, '<#$1>');
+            msgContent = msgContent.replace(/user\[(\d+)\]/g, '<@$1>');
+            msgContent = msgContent.replace(/\(([^)]+)\)\[(https?:\/\/[^\]]+)\]/g, '[$1]($2)');
+        }
+
+        const fieldsHtml = editingFields.map(f => {
+            const idx = editingFields.indexOf(f);
+            let val = sampleAnswers[`field_${idx}`] || 'Пример ответа';
+            return `<div class="preview-embed__field"><div class="preview-embed__field-name">${escapeHtml(f.label)}</div><div class="preview-embed__field-value">• ${escapeHtml(val)}</div></div>`;
+        }).join('');
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'preview-modal';
+        modal.innerHTML = `
+            <div class="modal" style="max-width:520px">
+                <div class="modal__header">
+                    <h3 class="modal__title">Предпросмотр webhook</h3>
+                    <button class="modal__close" onclick="closePreviewModal()">&times;</button>
+                </div>
+                <div class="modal__body" style="background:#36393f;padding:20px;border-radius:8px;overflow-y:auto;max-height:70vh">
+                    ${msgContent ? `<div class="preview-msg">${escapeHtml(msgContent)}</div>` : ''}
+                    <div class="preview-embed" style="border-left-color:${color}">
+                        <div class="preview-embed__title">${escapeHtml(formName)}</div>
+                        ${fieldsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closePreviewModal(); });
+    }
+
+    function closePreviewModal() {
+        const modal = document.getElementById('preview-modal');
+        if (modal) modal.remove();
+    }
+
+    function renderFields() {
+        if (!editingFields.length) return '<div class="fields-empty">Поля не добавлены</div>';
+        const typeLabels = { short_text: 'Короткий текст', long_text: 'Длинный текст', select: 'Выбор ответа', date: 'Дата', datetime: 'Дата и время' };
+        return editingFields.map((f, i) => `
+            <div class="field-item" draggable="true" ondragstart="dragStart(event, ${i})" ondragover="dragOver(event)" ondrop="drop(event, ${i})" ondragend="dragEnd(event)">
+                <div class="field-item__handle">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <div class="field-item__content">
+                    <div class="field-item__row">
+                        <input type="text" class="field-item__label" value="${escapeHtml(f.label)}" placeholder="Название поля" onchange="updateField(${i}, 'label', this.value)">
+                        <span class="field-item__type">${typeLabels[f.type]}</span>
+                        <label class="field-item__required">
+                            <input type="checkbox" ${f.required ? 'checked' : ''} onchange="updateField(${i}, 'required', this.checked)">
+                            Обязательное
+                        </label>
+                        <button class="btn btn--ghost btn--sm btn--icon" onclick="removeField(${i})">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
+                    ${f.type === 'select' ? `
+                        <div class="field-item__options">
+                            ${(f.options || []).map((opt, oi) => `
+                                <div class="field-option">
+                                    <input type="text" class="field-option__input" value="${escapeHtml(opt)}" placeholder="Вариант ${oi + 1}" onchange="updateOption(${i}, ${oi}, this.value)">
+                                    <button class="btn btn--ghost btn--sm btn--icon" onclick="removeOption(${i}, ${oi})">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                    </button>
+                                </div>
+                            `).join('')}
+                            <button class="btn btn--ghost btn--sm" onclick="addOption(${i})">+ Вариант</button>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function addField(type) {
+        editingFields.push({ label: '', type: type, options: type === 'select' ? [''] : null, required: false });
+        document.getElementById('fields-list').innerHTML = renderFields();
+    }
+
+    function removeField(index) {
+        editingFields.splice(index, 1);
+        document.getElementById('fields-list').innerHTML = renderFields();
+    }
+
+    function updateField(index, key, value) { editingFields[index][key] = value; }
+
+    function addOption(fieldIndex) {
+        if (!editingFields[fieldIndex].options) editingFields[fieldIndex].options = [];
+        editingFields[fieldIndex].options.push('');
+        document.getElementById('fields-list').innerHTML = renderFields();
+    }
+
+    function removeOption(fieldIndex, optionIndex) {
+        editingFields[fieldIndex].options.splice(optionIndex, 1);
+        document.getElementById('fields-list').innerHTML = renderFields();
+    }
+
+    function updateOption(fieldIndex, optionIndex, value) { editingFields[fieldIndex].options[optionIndex] = value; }
+
+    let dragIndex = null;
+    function dragStart(e, index) { dragIndex = index; e.currentTarget.classList.add('field-item--dragging'); }
+    function dragOver(e) { e.preventDefault(); }
+    function drop(e, index) {
+        e.preventDefault();
+        if (dragIndex === null) return;
+        const item = editingFields.splice(dragIndex, 1)[0];
+        editingFields.splice(index, 0, item);
+        dragIndex = null;
+        document.getElementById('fields-list').innerHTML = renderFields();
+    }
+    function dragEnd(e) { e.currentTarget.classList.remove('field-item--dragging'); }
+
+    async function saveForm() {
+        const name = document.getElementById('form-name').value.trim();
+        const webhook_url = document.getElementById('form-webhook').value.trim();
+        const message_template = document.getElementById('form-message').value.trim();
+        const embed_color = document.getElementById('form-color').value;
+        if (!name) { alert('Введите название формы'); return; }
+        const slug = translit(name);
+        const body = { name, webhook_url, slug, message_template, embed_color, fields: editingFields, department_id: deptData.id };
+        const url = currentForm ? `/api/forms/${currentForm.id}` : '/api/forms';
+        const method = currentForm ? 'PUT' : 'POST';
+        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (data.success) {
+            formsList = [];
+            showToast('Изменения сохранены');
+        }
+        else alert(data.error || 'Ошибка сохранения');
+    }
+
+    function initColorPicker() {
+        const picker = document.getElementById('form-color');
+        const hex = document.getElementById('form-color-hex');
+        const preview = document.getElementById('form-color-preview');
+        if (!picker || !hex || !preview) return;
+        
+        picker.addEventListener('input', () => {
+            hex.value = picker.value;
+            preview.style.background = picker.value;
+        });
+        
+        hex.addEventListener('input', () => {
+            const val = hex.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+                picker.value = val;
+                preview.style.background = val;
+            }
+        });
+    }
+
+    function translit(str) {
+        const map = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya' };
+        return str.toLowerCase().split('').map(c => map[c] || c).join('').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    async function deleteForm(id) {
+        if (!confirm('Удалить форму?')) return;
+        const res = await fetch(`/api/forms/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) { formsList = []; closeFormEditor(); }
+    }
+
+    let editingDept = null;
+
+    async function renderDeptsList(container) {
+        const res = await fetch('/api/departments');
+        const depts = await res.json();
+        container.className = 'dept-page__layout dept-page__layout--full';
+        container.innerHTML = `
+            <div class="depts-page">
+                <div class="depts-page__header">
+                    <h1 class="depts-page__title">Все ведомства</h1>
+                    <span class="depts-page__count">${depts.length}</span>
+                </div>
+                <div class="depts-page__grid">
+                    ${depts.map((d, i) => `
+                        <div class="depts-page__card" onclick="openDept(${d.id})" style="animation-delay: ${i * 0.05}s">
+                            <div class="depts-page__card-color" style="background: ${d.color}"></div>
+                            <div class="depts-page__card-body">
+                                <h3 class="depts-page__card-name">${d.name}</h3>
+                                <span class="depts-page__card-short" style="color: ${d.color}">${d.short_name}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    async function openDept(id) {
+        const res = await fetch(`/api/departments/${id}`);
+        deptData = await res.json();
+        userData = { ...userData, department_id: deptData.id };
+        formsList = [];
+        document.getElementById('dept-content').className = 'dept-page__layout';
+        renderLayout();
+    }
+
+    function backToDepts() {
+        formEditorMode = null;
+        currentForm = null;
+        editingFields = [];
+        deptData = null;
+        userData = { ...userData, department_id: null };
+        renderDeptsList(document.getElementById('dept-content'));
+    }
+
+    async function init() {
+        const res = await fetch('/api/me');
+        const data = await res.json();
+        if (!data.loggedIn || !['leader', 'deputy_leader', 'developer'].includes(data.user.role)) {
+            window.location.href = '/';
+            return;
+        }
+
+        document.getElementById('nav-user').style.display = 'block';
+        document.getElementById('auth-btn-guest').style.display = 'none';
+        const authBtn = document.getElementById('auth-btn');
+        const avatarUrl = data.user.avatar
+            ? `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png?size=64`
+            : `https://cdn.discordapp.com/embed/avatars/${parseInt(data.user.discriminator || 0) % 5}.png`;
+        authBtn.innerHTML = `<img src="${avatarUrl}" width="24" height="24" style="border-radius:50%"><span>${data.user.username}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+        document.getElementById('dropdown-role').textContent = roleLabels[data.user.role] || 'Пользователь';
+        if (['leader', 'deputy_leader', 'developer'].includes(data.user.role)) document.getElementById('btn-department').style.display = 'flex';
+        if (data.user.role === 'developer') document.getElementById('btn-admin').style.display = 'flex';
+
+        authBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('nav-dropdown').classList.toggle('open');
+        });
+        document.addEventListener('click', (e) => {
+            const dd = document.getElementById('nav-dropdown');
+            if (!dd.contains(e.target) && e.target !== authBtn) dd.classList.remove('open');
+        });
+
+        const container = document.getElementById('dept-content');
+
+        if (!data.user.department_id && data.user.role !== 'developer') {
+            container.innerHTML = `
+                <div class="dept-empty">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M3 7v14M21 7v14M6 11h.01M6 15h.01M6 19h.01M10 11h.01M10 15h.01M10 19h.01M14 11h.01M14 15h.01M14 19h.01M18 11h.01M18 15h.01M18 19h.01M9 7a3 3 0 116 0v0a3 3 0 01-6 0z" stroke="var(--slate)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <h2>Ведомство не назначено</h2>
+                <p>Обратитесь к Developer для назначения ведомства.</p>
+                </div>
+            `;
+            return;
+        }
+
+        if (data.user.role === 'developer' && !data.user.department_id) {
+            userData = data.user;
+            await renderDeptsList(container);
+            return;
+        }
+
+        const deptRes = await fetch(`/api/departments/${data.user.department_id}`);
+        deptData = await deptRes.json();
+        userData = data.user;
+
+        renderLayout();
+    }
+
+    function renderLayout() {
+        const container = document.getElementById('dept-content');
+        container.innerHTML = `
+            <aside class="dept-sidebar">
+                <div class="dept-sidebar__header" style="border-left: 3px solid ${deptData.color}">
+                    <span class="dept-sidebar__short" style="color: ${deptData.color}">${deptData.short_name}</span>
+                    <span class="dept-sidebar__role">${roleLabels[userData.role] || 'Пользователь'}</span>
+                </div>
+                <nav class="dept-sidebar__nav">
+                    ${userData.role === 'developer' ? `
+                        <button class="dept-sidebar__item" onclick="backToDepts()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Все ведомства
+                        </button>
+                    ` : ''}
+                    <button class="dept-sidebar__item ${currentTab === 'members' ? 'active' : ''}" onclick="switchTab('members')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Участники
+                    </button>
+                    <button class="dept-sidebar__item ${currentTab === 'forms' ? 'active' : ''}" onclick="switchTab('forms')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Формы
+                    </button>
+                </nav>
+            </aside>
+            <section class="dept-content" id="dept-tab-content"></section>
+        `;
+        renderTab();
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.dept-sidebar__item').forEach(el => el.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        const content = document.getElementById('dept-tab-content');
+        content.classList.remove('tab-switch');
+        void content.offsetWidth;
+        content.classList.add('tab-switch');
+        renderTab();
+    }
+
+    function renderTab() {
+        const content = document.getElementById('dept-tab-content');
+        const canManageDeputies = userData.role === 'developer' || (userData.role === 'leader' && userData.department_id === deptData.id);
+        if (currentTab === 'members') {
+            content.innerHTML = `
+                <div class="dept-content__header">
+                    <h2 class="dept-content__title">Участники <span class="dept-content__count">${deptData.members.length}</span></h2>
+                    ${canManageDeputies ? `<button class="btn btn--primary" onclick="openDeputyModal()">Назначить заместителя</button>` : ''}
+                </div>
+                <div class="dept-members__list">
+                ${deptData.members.map(m => {
+                    const roleLabel = roleLabels[m.role] || 'Пользователь';
+                    const roleClass = m.role === 'deputy_leader' ? 'deputy' : m.role;
+                    return `
+                    <div class="dept-member">
+                    <img class="dept-member__avatar" src="${m.avatar ? `https://cdn.discordapp.com/avatars/${m.discord_id}/${m.avatar}.png?size=64` : `https://cdn.discordapp.com/embed/avatars/0.png`}" alt="">
+                    <span class="dept-member__name">${m.username}</span>
+                    <span class="dept-member__badge dept-member__badge--${roleClass}">${roleLabel}</span>
+                    ${canManageDeputies && m.role === 'deputy_leader' ? `
+                        <button class="btn btn--ghost btn--sm" onclick="removeDeputy(${m.id})">Снять заместителя</button>
+                    ` : ''}
+                    <span class="dept-member__id" onclick="copyDiscordId(this, \'${m.discord_id}\')" title="Нажми чтобы скопировать">${m.discord_id}</span>
+                    </div>
+                    `;
+                }).join('')}
+                </div>
+            `;
+        } else {
+            renderFormsTab(content);
+        }
+    }
+
+    function openDeputyModal() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'deputy-modal';
+        modal.innerHTML = `
+            <div class="modal">
+                <div class="modal__header">
+                    <h3 class="modal__title">Назначить заместителя</h3>
+                    <button class="modal__close" onclick="closeDeputyModal()">&times;</button>
+                </div>
+                <div class="modal__body">
+                    <input type="text" class="modal__input" id="deputy-search" placeholder="Введите usertag..." oninput="searchDeputy()" autofocus>
+                    <div class="modal__results" id="deputy-results"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeDeputyModal(); });
+    }
+
+    function closeDeputyModal() {
+        const modal = document.getElementById('deputy-modal');
+        if (modal) modal.remove();
+    }
+
+    let searchTimeout;
+    let allUsersCache = null;
+
+    function searchDeputy() {
+        clearTimeout(searchTimeout);
+        const query = document.getElementById('deputy-search').value.trim().toLowerCase();
+        const resultsEl = document.getElementById('deputy-results');
+        if (!query) { resultsEl.innerHTML = ''; return; }
+        searchTimeout = setTimeout(async () => {
+            if (!allUsersCache) {
+                const res = await fetch('/api/users');
+                allUsersCache = await res.json();
+            }
+            const matches = allUsersCache.filter(u => u.role === 'user' && (u.username.toLowerCase().includes(query) || u.discord_id.includes(query)));
+            if (!matches.length) {
+                resultsEl.innerHTML = '<div class="modal__empty">Не найдено</div>';
+                return;
+            }
+            resultsEl.innerHTML = matches.map(m => `
+                <div class="modal__item">
+                <img class="modal__avatar" src="${m.avatar ? `https://cdn.discordapp.com/avatars/${m.discord_id}/${m.avatar}.png?size=32` : `https://cdn.discordapp.com/embed/avatars/0.png`}" alt="">
+                <div class="modal__user-info">
+                    <span class="modal__name">${m.username}</span>
+                    <span class="modal__discord-id">${m.discord_id}</span>
+                </div>
+                <button class="btn btn--primary btn--sm" onclick="assignDeputy(${m.id})">Назначить</button>
+                </div>
+            `).join('');
+        }, 200);
+    }
+
+    async function deputyAction(userId, action) {
+        await fetch(`/api/users/${userId}/deputy`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+        allUsersCache = null;
+        closeDeputyModal();
+        deptData = await (await fetch(`/api/departments/${deptData.id}`)).json();
+        renderTab();
+    }
+
+    function assignDeputy(userId) { return deputyAction(userId, 'assign'); }
+    function removeDeputy(userId) { return deputyAction(userId, 'remove'); }
+
+    async function copyText(text) {
+        await navigator.clipboard.writeText(text);
+    }
+
+    async function copyDiscordId(el, id) {
+        await copyText(id);
+        const orig = el.textContent;
+        el.textContent = 'Скопировано!';
+        el.classList.add('copied');
+        setTimeout(() => { el.textContent = orig; el.classList.remove('copied'); }, 1000);
+    }
+
+    async function copyFormUrl(deptSlug, formSlug) {
+        const url = `${window.location.origin}/${deptSlug}/${formSlug}`;
+        await copyText(url);
+        alert('Ссылка скопирована: ' + url);
+    }
+
+    function showToast(message) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#5865F2;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:500;opacity:0;transition:opacity .3s,transform .3s;z-index:99999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+        });
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
+    }
+
+    async function copyFormLink() {
+        const input = document.getElementById('form-link-input');
+        await copyText(input.value);
+        alert('Ссылка скопирована: ' + input.value);
+    }
+
+    init();
+    </script>
+    <script>
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.theme-toggle');
+        if (!btn) return;
+        var el = document.documentElement;
+        el.classList.add('theme-transition');
+        void el.offsetHeight;
+        var next = el.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        el.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+        setTimeout(function() {
+            el.classList.remove('theme-transition');
+        }, 350);
+    });
+    </script>
+</body>
+</html>
