@@ -30,6 +30,8 @@
             75% { transform: translateY(-15px) rotate(2deg) scale(1.02); }
         }
         .form-view { max-width: 640px; margin: 0 auto; padding: 120px 24px 80px; position: relative; z-index: 1; }
+        .form-view__banner { margin-bottom: 0; border-radius: 16px 16px 0 0; overflow: hidden; animation: slideDown 0.5s ease; }
+        .form-view__banner img { width: 100%; object-fit: cover; display: block; }
         .form-view__header { margin-bottom: 32px; animation: slideDown 0.5s ease; }
         .form-view__title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
         .form-view__dept { font-size: 14px; font-weight: 600; }
@@ -134,6 +136,7 @@
 
         const container = document.getElementById('form-content');
         container.innerHTML = `
+            ${form.banner_url ? `<div class="form-view__banner"><img src="${form.banner_url}" style="height:${form.banner_height || 200}px" alt=""></div>` : ''}
             <div class="form-view__header">
                 <h1 class="form-view__title">${form.name}</h1>
                 <span class="form-view__dept" style="color: ${form.department_color}">${form.department_short}</span>
@@ -169,6 +172,8 @@
                 return `<input type="date" name="field_${i}" ${f.required ? 'required' : ''} max="9999-12-31" oninput="if(this.value.length>10)this.value=this.value.slice(0,10)">`;
             case 'datetime':
                 return `<input type="datetime-local" name="field_${i}" ${f.required ? 'required' : ''} max="9999-12-31T23:59" oninput="if(this.value.length>16)this.value=this.value.slice(0,16)">`;
+            case 'discord_id':
+                return `<input type="text" name="field_${i}" ${f.required ? 'required' : ''} placeholder="Введите Discord ID" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'')">`;
             default:
                 return `<input type="text" name="field_${i}">`;
         }
