@@ -109,6 +109,8 @@ db.getConnection()
     try { await db.execute("ALTER TABLE form_responses ADD CONSTRAINT form_responses_ibfk_2 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL"); } catch (e) {}
     try { await db.execute("ALTER TABLE forms ADD COLUMN banner_url VARCHAR(500) DEFAULT NULL"); } catch (e) {}
     try { await db.execute("ALTER TABLE forms ADD COLUMN banner_height INT DEFAULT 200"); } catch (e) {}
+    try { await db.execute("ALTER TABLE forms ADD COLUMN banner_transform VARCHAR(255) DEFAULT NULL"); } catch (e) {}
+    try { await db.execute("ALTER TABLE forms ADD COLUMN banner_scale DECIMAL(3,2) DEFAULT 1.00"); } catch (e) {}
     try { await db.execute("ALTER TABLE forms ADD COLUMN show_timestamp TINYINT(1) DEFAULT 0"); } catch (e) {}
 
     await db.execute(`CREATE TABLE IF NOT EXISTS images (
@@ -174,26 +176,30 @@ function translit(str) {
 function parseTemplate(template, answers, fields) {
   if (!template) return null;
   let result = template;
-  
+
   // Replace field placeholders: {0}, {1}, etc.
   fields.forEach((f, i) => {
-    const value = answers[`field_${i}`] || '';
+    let value = answers[`field_${i}`] || '';
+    // Format Discord ID as mention
+    if (f.type === 'discord_id' && value) {
+      value = `<@${value}>`;
+    }
     result = result.replace(new RegExp(`\\{${i}\\}`, 'g'), value);
   });
-  
+
   // Replace field name placeholders: {name0}, {name1}, etc.
   fields.forEach((f, i) => {
     result = result.replace(new RegExp(`\\{name${i}\\}`, 'g'), f.label);
   });
-  
+
   // Parse Discord mentions: role[ID], channel[ID], user[ID]
   result = result.replace(/role\[(\d+)\]/g, '<@&$1>');
   result = result.replace(/channel\[(\d+)\]/g, '<#$1>');
   result = result.replace(/user\[(\d+)\]/g, '<@$1>');
-  
+
   // Parse links: (text)[URL] - text in (), URL in []
   result = result.replace(/\(([^)]+)\)\[(https?:\/\/[^\]]+)\]/g, '[$1]($2)');
-  
+
   return result;
 }
 
@@ -448,15 +454,15 @@ app.post('/api/forms', async (req, res) => {
   try {
     const [caller] = await db.execute('SELECT id, role, department_id FROM users WHERE discord_id = ?', [req.session.user.id]);
     if (!caller.length || !['leader', 'deputy_leader', 'developer'].includes(caller[0].role)) return res.status(403).json({ error: 'Forbidden' });
-    const { name, webhook_url, slug, message_template, embed_color, fields, show_timestamp, banner_url, banner_height } = req.body;
+    const { name, webhook_url, slug, message_template, embed_color, fields, show_timestamp, banner_url, banner_height, banner_transform, banner_scale } = req.body;
     if (!name) return res.status(400).json({ error: 'Name required' });
     const deptId = caller[0].role === 'developer' ? (req.body.department_id || caller[0].department_id) : caller[0].department_id;
     if (!deptId) return res.status(400).json({ error: 'Department required' });
     const formSlug = slug || translit(name);
     const colorHex = embed_color || '#5865F2';
     const colorInt = parseInt(colorHex.replace('#', ''), 16);
-    const [result] = await db.execute('INSERT INTO forms (department_id, name, webhook_url, slug, message_template, embed_color, show_timestamp, banner_url, banner_height, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [deptId, name, webhook_url ? encrypt(webhook_url) : null, formSlug, message_template || null, colorHex, show_timestamp ? 1 : 0, banner_url || null, banner_height || 200, caller[0].id]);
+    const [result] = await db.execute('INSERT INTO forms (department_id, name, webhook_url, slug, message_template, embed_color, show_timestamp, banner_url, banner_height, banner_transform, banner_scale, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [deptId, name, webhook_url ? encrypt(webhook_url) : null, formSlug, message_template || null, colorHex, show_timestamp ? 1 : 0, banner_url || null, banner_height || 200, banner_transform || null, banner_scale || 1, caller[0].id]);
     const formId = result.insertId;
     if (fields && fields.length) {
       for (let i = 0; i < fields.length; i++) {
@@ -494,7 +500,7 @@ app.put('/api/forms/:id', async (req, res) => {
     const [form] = await db.execute('SELECT * FROM forms WHERE id = ?', [req.params.id]);
     if (!form.length) return res.status(404).json({ error: 'Not found' });
     if (caller[0].role !== 'developer' && form[0].department_id !== caller[0].department_id) return res.status(403).json({ error: 'Forbidden' });
-    const { name, webhook_url, slug, message_template, embed_color, fields, show_timestamp, banner_url, banner_height } = req.body;
+    const { name, webhook_url, slug, message_template, embed_color, fields, show_timestamp, banner_url, banner_height, banner_transform, banner_scale } = req.body;
     const formSlug = slug || (name ? translit(name) : form[0].slug);
     const encryptedWebhook = webhook_url !== undefined ? (webhook_url ? encrypt(webhook_url) : null) : form[0].webhook_url;
     const templateValue = message_template !== undefined ? (message_template || null) : form[0].message_template;
@@ -502,7 +508,9 @@ app.put('/api/forms/:id', async (req, res) => {
     const timestampValue = show_timestamp !== undefined ? (show_timestamp ? 1 : 0) : form[0].show_timestamp;
     const bannerValue = banner_url !== undefined ? (banner_url || null) : form[0].banner_url;
     const bannerHeightValue = banner_height !== undefined ? banner_height : (form[0].banner_height || 200);
-    await db.execute('UPDATE forms SET name = ?, webhook_url = ?, slug = ?, message_template = ?, embed_color = ?, show_timestamp = ?, banner_url = ?, banner_height = ? WHERE id = ?', [name || form[0].name, encryptedWebhook, formSlug, templateValue, colorValue, timestampValue, bannerValue, bannerHeightValue, req.params.id]);
+    const bannerTransformValue = banner_transform !== undefined ? (banner_transform || null) : form[0].banner_transform;
+    const bannerScaleValue = banner_scale !== undefined ? banner_scale : (form[0].banner_scale || 1);
+    await db.execute('UPDATE forms SET name = ?, webhook_url = ?, slug = ?, message_template = ?, embed_color = ?, show_timestamp = ?, banner_url = ?, banner_height = ?, banner_transform = ?, banner_scale = ? WHERE id = ?', [name || form[0].name, encryptedWebhook, formSlug, templateValue, colorValue, timestampValue, bannerValue, bannerHeightValue, bannerTransformValue, bannerScaleValue, req.params.id]);
     if (fields) {
       await db.execute('DELETE FROM form_fields WHERE form_id = ?', [req.params.id]);
       for (let i = 0; i < fields.length; i++) {

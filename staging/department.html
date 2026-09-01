@@ -7,7 +7,7 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="stylesheet" href="base.css?v=8">
     <link rel="stylesheet" href="department.css?v=27">
-    <link rel="stylesheet" href="forms.css?v=13">
+    <link rel="stylesheet" href="forms.css?v=14">
     <script>
         (function() {
             var saved = localStorage.getItem('theme');
@@ -71,16 +71,16 @@
 
     <script>
     (function() {
-      const saved = localStorage.getItem('theme');
-      const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      document.documentElement.setAttribute('data-theme', theme);
-      if (!saved) localStorage.setItem('theme', theme);
-      const btn = document.getElementById('theme-toggle');
-      if (btn) btn.addEventListener('click', () => {
+        const saved = localStorage.getItem('theme');
+        const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+        if (!saved) localStorage.setItem('theme', theme);
+        const btn = document.getElementById('theme-toggle');
+        if (btn) btn.addEventListener('click', () => {
         const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
         localStorage.setItem('theme', next);
-      });
+        });
     })();
     let currentTab = 'members';
     let deptData = null;
@@ -231,28 +231,6 @@
                         <span class="editor-toggle__switch"></span>
                         Показать время в footer
                     </label>
-                </div>
-                <div class="editor-section">
-                    <label class="editor-label">Баннер формы</label>
-                    <div class="editor-banner" id="banner-area">
-                        ${isEdit && currentForm.banner_url ? `
-                            <div class="editor-banner__actions">
-                                <button class="btn btn--ghost btn--sm" onclick="openBannerEditor()">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    Редактировать
-                                </button>
-                                <button class="btn btn--danger btn--sm" onclick="removeBanner()">Удалить</button>
-                            </div>
-                        ` : `
-                            <button class="btn btn--ghost" onclick="openBannerUpload()">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                Добавить баннер
-                            </button>
-                        `}
-                    </div>
-                    <input type="hidden" id="form-banner-url" value="${isEdit ? (currentForm.banner_url || '') : ''}">
-                    <input type="hidden" id="form-banner-height" value="${isEdit ? (currentForm.banner_height || 200) : 200}">
-                    <input type="hidden" id="form-banner-transform" value="${isEdit ? (currentForm.banner_transform || '') : ''}">
                 </div>
                 <div class="editor-section">
                     <label class="editor-label">Текст сообщения</label>
@@ -456,11 +434,35 @@
         const message_template = document.getElementById('form-message').value.trim();
         const embed_color = document.getElementById('form-color').value;
         const show_timestamp = document.getElementById('form-show-timestamp').checked;
-        const banner_url = document.getElementById('form-banner-url').value;
+        let banner_url = document.getElementById('form-banner-url').value;
         const banner_height = parseInt(document.getElementById('form-banner-height').value) || 200;
+        const banner_transform = document.getElementById('form-banner-transform').value || '';
+        const banner_scale = parseFloat(document.getElementById('form-banner-scale').value) || 1;
+
         if (!name) { alert('Введите название формы'); return; }
+
+        // Если есть новый файл баннера, загружаем его на сервер
+        if (pendingBannerFile) {
+            const formData = new FormData();
+            formData.append('image', pendingBannerFile);
+            const res = await fetch('/api/images/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                // Удаляем старый баннер если он был
+                const oldUrl = currentForm?.banner_url;
+                if (oldUrl && oldUrl !== banner_url) {
+                    await deleteImage(oldUrl);
+                }
+                banner_url = data.url;
+                pendingBannerFile = null;
+            } else {
+                alert(data.error || 'Ошибка загрузки баннера');
+                return;
+            }
+        }
+
         const slug = translit(name);
-        const body = { name, webhook_url, slug, message_template, embed_color, show_timestamp, banner_url, banner_height, fields: editingFields, department_id: deptData.id };
+        const body = { name, webhook_url, slug, message_template, embed_color, show_timestamp, banner_url, banner_height, banner_transform, banner_scale, fields: editingFields, department_id: deptData.id };
         const url = currentForm ? `/api/forms/${currentForm.id}` : '/api/forms';
         const method = currentForm ? 'PUT' : 'POST';
         const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -471,298 +473,6 @@
         }
         else alert(data.error || 'Ошибка сохранения');
     }
-
-    function openBannerUpload() {
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.id = 'banner-upload-modal';
-        modal.innerHTML = `
-            <div class="modal" style="max-width:500px">
-                <div class="modal__header">
-                    <h3 class="modal__title">Загрузка баннера</h3>
-                    <button class="modal__close" onclick="closeBannerModal()">&times;</button>
-                </div>
-                <div class="modal__body" style="text-align:center">
-                    <label class="editor-banner__upload" id="banner-drop-zone" style="margin:0">
-                        <input type="file" id="banner-file-input" accept="image/*" onchange="handleBannerFile(this.files[0])" style="display:none">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        <span style="font-size:15px">Нажми или перетащи файл</span>
-                        <span style="font-size:12px;color:var(--slate)">PNG, JPG, GIF, WebP — макс 5MB</span>
-                    </label>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        modal.addEventListener('click', (e) => { if (e.target === modal) closeBannerModal(); });
-    }
-
-    async function handleBannerFile(file) {
-        if (!file) return;
-        if (file.size > 5 * 1024 * 1024) { alert('Файл слишком большой (макс 5MB)'); return; }
-        const oldUrl = document.getElementById('form-banner-url').value;
-        if (oldUrl) await deleteImage(oldUrl);
-        const formData = new FormData();
-        formData.append('image', file);
-        const res = await fetch('/api/images/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.success) {
-            document.getElementById('form-banner-url').value = data.url;
-            document.getElementById('form-banner-height').value = 200;
-            document.getElementById('form-banner-transform').value = '';
-            closeBannerModal();
-            openBannerEditor();
-        } else {
-            alert(data.error || 'Ошибка загрузки');
-        }
-    }
-
-    function openBannerEditor() {
-        const url = document.getElementById('form-banner-url').value;
-        const height = parseInt(document.getElementById('form-banner-height').value) || 200;
-        const transform = document.getElementById('form-banner-transform').value || 'translate(0px, 0px)';
-        if (!url) return;
-
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.id = 'banner-editor-modal';
-        modal.innerHTML = `
-            <div class="modal" style="max-width:700px">
-                <div class="modal__header">
-                    <h3 class="modal__title">Редактирование баннера</h3>
-                    <button class="modal__close" onclick="closeBannerModal()">&times;</button>
-                </div>
-                <div class="modal__body">
-                    <div class="editor-banner__crop" id="banner-crop" style="height:${height}px">
-                        <img src="${url}" id="banner-img" alt="Баннер" draggable="false" style="transform:${transform}">
-                        <div class="editor-banner__handle" id="banner-handle"></div>
-                    </div>
-                    <div class="editor-banner__hint">Перетаскивай картинку для позиционирования · Тяни нижнюю полосу для изменения высоты</div>
-                    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
-                        <button class="btn btn--ghost" onclick="closeBannerModal()">Отмена</button>
-                        <button class="btn btn--primary" onclick="saveBannerEdit()">Сохранить</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        modal.addEventListener('click', (e) => { if (e.target === modal) closeBannerModal(); });
-        initBannerDrag();
-    }
-
-    function saveBannerEdit() {
-        const crop = document.getElementById('banner-crop');
-        const img = document.getElementById('banner-img');
-        if (crop && img) {
-            document.getElementById('form-banner-height').value = Math.round(crop.offsetHeight);
-            document.getElementById('form-banner-transform').value = img.style.transform || 'translate(0px, 0px)';
-        }
-        closeBannerModal();
-        renderBannerPreview();
-    }
-
-    function renderBannerPreview() {
-        const url = document.getElementById('form-banner-url').value;
-        const area = document.getElementById('banner-area');
-        if (url) {
-            area.innerHTML = `
-                <div class="editor-banner__actions">
-                    <button class="btn btn--ghost btn--sm" onclick="openBannerEditor()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        Редактировать
-                    </button>
-                    <button class="btn btn--danger btn--sm" onclick="removeBanner()">Удалить</button>
-                </div>
-            `;
-        } else {
-            area.innerHTML = `
-                <button class="btn btn--ghost" onclick="openBannerUpload()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Добавить баннер
-                </button>
-            `;
-        }
-    }
-
-    async function removeBanner() {
-        const url = document.getElementById('form-banner-url').value;
-        if (url) await deleteImage(url);
-        document.getElementById('form-banner-url').value = '';
-        document.getElementById('form-banner-height').value = 200;
-        document.getElementById('form-banner-transform').value = '';
-        renderBannerPreview();
-    }
-
-    async function deleteImage(url) {
-        const match = url.match(/\/i\/(\d+)/);
-        if (match) {
-            try { await fetch(`/i/${match[1]}`, { method: 'DELETE' }); } catch (e) {}
-        }
-    }
-
-    function closeBannerModal() {
-        const m1 = document.getElementById('banner-upload-modal');
-        const m2 = document.getElementById('banner-editor-modal');
-        if (m1) m1.remove();
-        if (m2) m2.remove();
-    }
-
-    function initBannerDrag() {
-        const crop = document.getElementById('banner-crop');
-        const handle = document.getElementById('banner-handle');
-        const img = document.getElementById('banner-img');
-        if (!crop || !handle || !img) return;
-
-        function fitImage(resetPos) {
-            const cropW = crop.offsetWidth;
-            const cropH = crop.offsetHeight;
-            const natW = img.naturalWidth;
-            const natH = img.naturalHeight;
-            if (!natW || !natH) return;
-            const scaleW = cropW / natW;
-            const scaleH = cropH / natH;
-            const scale = Math.max(scaleW, scaleH) * 1.3;
-            const w = natW * scale;
-            const h = natH * scale;
-            img.style.width = w + 'px';
-            img.style.height = h + 'px';
-            if (resetPos) {
-                const tx = -(w - cropW) / 2;
-                const ty = -(h - cropH) / 2;
-                img.style.transform = `translate(${tx}px, ${ty}px)`;
-            }
-        }
-
-        if (img.complete) fitImage(true);
-        else img.addEventListener('load', () => fitImage(true));
-
-        handle.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            const startY = e.clientY;
-            const startH = crop.offsetHeight;
-            function onDrag(ev) {
-                const newH = Math.max(100, Math.min(400, startH + (ev.clientY - startY)));
-                crop.style.height = newH + 'px';
-                fitImage(false);
-            }
-            function onDragEnd() {
-                document.removeEventListener('mousemove', onDrag);
-                document.removeEventListener('mouseup', onDragEnd);
-            }
-            document.addEventListener('mousemove', onDrag);
-            document.addEventListener('mouseup', onDragEnd);
-        });
-
-        img.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const transform = img.style.transform || '';
-            const match = transform.match(/translate\((.+?)px,\s*(.+?)px\)/);
-            const startTx = match ? parseFloat(match[1]) : 0;
-            const startTy = match ? parseFloat(match[2]) : 0;
-
-            function onMove(ev) {
-                const dx = ev.clientX - startX;
-                const dy = ev.clientY - startY;
-                const imgW = img.offsetWidth;
-                const imgH = img.offsetHeight;
-                const cropW = crop.offsetWidth;
-                const cropH = crop.offsetHeight;
-                const maxTx = Math.max(0, imgW - cropW);
-                const maxTy = Math.max(0, imgH - cropH);
-                const tx = Math.max(-maxTx, Math.min(0, startTx + dx));
-                const ty = Math.max(-maxTy, Math.min(0, startTy + dy));
-                img.style.transform = `translate(${tx}px, ${ty}px)`;
-            }
-            function onUp() {
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-            }
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        });
-    }
-
-    function initBannerDrag() {
-        const crop = document.getElementById('banner-crop');
-        const handle = document.getElementById('banner-handle');
-        const img = document.getElementById('banner-img');
-        if (!crop || !handle || !img) return;
-
-        function fitImage() {
-            const cropW = crop.offsetWidth;
-            const cropH = crop.offsetHeight;
-            const natW = img.naturalWidth;
-            const natH = img.naturalHeight;
-            if (!natW || !natH) return;
-            const cropRatio = cropW / cropH;
-            const imgRatio = natW / natH;
-            if (imgRatio > cropRatio) {
-                img.style.width = 'auto';
-                img.style.height = '100%';
-            } else {
-                img.style.width = '100%';
-                img.style.height = 'auto';
-            }
-            img.style.transform = 'translate(0px, 0px)';
-        }
-
-        if (img.complete) fitImage();
-        else img.addEventListener('load', fitImage);
-
-        let startY, startH;
-        handle.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            startY = e.clientY;
-            startH = crop.offsetHeight;
-            document.addEventListener('mousemove', onDrag);
-            document.addEventListener('mouseup', onDragEnd);
-        });
-
-        function onDrag(e) {
-            const newH = Math.max(100, Math.min(400, startH + (e.clientY - startY)));
-            crop.style.height = newH + 'px';
-            document.getElementById('form-banner-height').value = Math.round(newH);
-            fitImage();
-        }
-
-        function onDragEnd() {
-            document.removeEventListener('mousemove', onDrag);
-            document.removeEventListener('mouseup', onDragEnd);
-        }
-
-        img.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            const startX = e.clientX;
-            const startYEv = e.clientY;
-            const transform = img.style.transform || '';
-            const match = transform.match(/translate\((.+?)px,\s*(.+?)px\)/);
-            const startTx = match ? parseFloat(match[1]) : 0;
-            const startTy = match ? parseFloat(match[2]) : 0;
-
-            function onMove(e) {
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startYEv;
-                const imgW = img.offsetWidth;
-                const imgH = img.offsetHeight;
-                const cropW = crop.offsetWidth;
-                const cropH = crop.offsetHeight;
-                const maxTx = Math.max(0, imgW - cropW);
-                const maxTy = Math.max(0, imgH - cropH);
-                const tx = Math.max(-maxTx, Math.min(0, startTx + dx));
-                const ty = Math.max(-maxTy, Math.min(0, startTy + dy));
-                img.style.transform = `translate(${tx}px, ${ty}px)`;
-            }
-            function onUp() {
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-            }
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        });
-    }
-
-    initBannerDrag();
 
     function initColorPicker() {
         const picker = document.getElementById('form-color');
