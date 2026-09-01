@@ -434,35 +434,11 @@
         const message_template = document.getElementById('form-message').value.trim();
         const embed_color = document.getElementById('form-color').value;
         const show_timestamp = document.getElementById('form-show-timestamp').checked;
-        let banner_url = document.getElementById('form-banner-url').value;
-        const banner_height = parseInt(document.getElementById('form-banner-height').value) || 200;
-        const banner_transform = document.getElementById('form-banner-transform').value || '';
-        const banner_scale = parseFloat(document.getElementById('form-banner-scale').value) || 1;
 
         if (!name) { alert('Введите название формы'); return; }
 
-        // Если есть новый файл баннера, загружаем его на сервер
-        if (pendingBannerFile) {
-            const formData = new FormData();
-            formData.append('image', pendingBannerFile);
-            const res = await fetch('/api/images/upload', { method: 'POST', body: formData });
-            const data = await res.json();
-            if (data.success) {
-                // Удаляем старый баннер если он был
-                const oldUrl = currentForm?.banner_url;
-                if (oldUrl && oldUrl !== banner_url) {
-                    await deleteImage(oldUrl);
-                }
-                banner_url = data.url;
-                pendingBannerFile = null;
-            } else {
-                alert(data.error || 'Ошибка загрузки баннера');
-                return;
-            }
-        }
-
         const slug = translit(name);
-        const body = { name, webhook_url, slug, message_template, embed_color, show_timestamp, banner_url, banner_height, banner_transform, banner_scale, fields: editingFields, department_id: deptData.id };
+        const body = { name, webhook_url, slug, message_template, embed_color, show_timestamp, fields: editingFields, department_id: deptData.id };
         const url = currentForm ? `/api/forms/${currentForm.id}` : '/api/forms';
         const method = currentForm ? 'PUT' : 'POST';
         const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
