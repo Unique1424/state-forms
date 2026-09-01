@@ -112,6 +112,8 @@ db.getConnection()
     try { await db.execute("ALTER TABLE forms ADD COLUMN banner_transform VARCHAR(255) DEFAULT NULL"); } catch (e) {}
     try { await db.execute("ALTER TABLE forms ADD COLUMN banner_scale DECIMAL(3,2) DEFAULT 1.00"); } catch (e) {}
     try { await db.execute("ALTER TABLE forms ADD COLUMN show_timestamp TINYINT(1) DEFAULT 0"); } catch (e) {}
+    try { await db.execute("ALTER TABLE form_fields ADD COLUMN description TEXT DEFAULT NULL"); } catch (e) {}
+    try { await db.execute("ALTER TABLE form_fields ADD COLUMN placeholder VARCHAR(255) DEFAULT NULL"); } catch (e) {}
 
     await db.execute(`CREATE TABLE IF NOT EXISTS images (
       id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -398,6 +400,51 @@ app.put('/api/departments/:id', async (req, res) => {
   }
 });
 
+app.get('/api/departments/:id/stats', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  const days = parseInt(req.query.days) || 7;
+  const deptId = req.params.id;
+
+  try {
+    // Получаем общее количество ответов за период
+    const [totalResult] = await db.execute(
+      `SELECT COUNT(*) as count FROM form_responses fr
+       JOIN forms f ON fr.form_id = f.id
+       WHERE f.department_id = ? AND fr.submitted_at >= DATE_SUB(NOW(), INTERVAL ? DAY)`,
+      [deptId, days]
+    );
+
+    // Получаем количество активных форм (форм с хотя бы одним ответом за период)
+    const [activeFormsResult] = await db.execute(
+      `SELECT COUNT(DISTINCT f.id) as count FROM forms f
+       JOIN form_responses fr ON f.id = fr.form_id
+       WHERE f.department_id = ? AND fr.submitted_at >= DATE_SUB(NOW(), INTERVAL ? DAY)`,
+      [deptId, days]
+    );
+
+    // Получаем статистику по каждой форме
+    const [formsStats] = await db.execute(
+      `SELECT f.id, f.name, COUNT(fr.id) as responses
+       FROM forms f
+       LEFT JOIN form_responses fr ON f.id = fr.form_id
+         AND fr.submitted_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+       WHERE f.department_id = ?
+       GROUP BY f.id, f.name
+       HAVING responses > 0
+       ORDER BY responses DESC`,
+      [days, deptId]
+    );
+
+    res.json({
+      total_responses: totalResult[0].count,
+      active_forms: activeFormsResult[0].count,
+      forms: formsStats
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put('/api/users/:id/deputy', async (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
   const [caller] = await db.execute('SELECT role, department_id FROM users WHERE discord_id = ?', [req.session.user.id]);
@@ -467,8 +514,8 @@ app.post('/api/forms', async (req, res) => {
     if (fields && fields.length) {
       for (let i = 0; i < fields.length; i++) {
         const f = fields[i];
-        await db.execute('INSERT INTO form_fields (form_id, label, type, options, required, order_index) VALUES (?, ?, ?, ?, ?, ?)',
-          [formId, f.label, f.type, f.options ? JSON.stringify(f.options) : null, f.required ? 1 : 0, i]);
+        await db.execute('INSERT INTO form_fields (form_id, label, type, options, required, order_index, description, placeholder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [formId, f.label, f.type, f.options ? JSON.stringify(f.options) : null, f.required ? 1 : 0, i, f.description || null, f.placeholder || null]);
       }
     }
     res.json({ success: true, id: formId });
@@ -515,8 +562,8 @@ app.put('/api/forms/:id', async (req, res) => {
       await db.execute('DELETE FROM form_fields WHERE form_id = ?', [req.params.id]);
       for (let i = 0; i < fields.length; i++) {
         const f = fields[i];
-        await db.execute('INSERT INTO form_fields (form_id, label, type, options, required, order_index) VALUES (?, ?, ?, ?, ?, ?)',
-          [req.params.id, f.label, f.type, f.options ? JSON.stringify(f.options) : null, f.required ? 1 : 0, i]);
+        await db.execute('INSERT INTO form_fields (form_id, label, type, options, required, order_index, description, placeholder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [req.params.id, f.label, f.type, f.options ? JSON.stringify(f.options) : null, f.required ? 1 : 0, i, f.description || null, f.placeholder || null]);
       }
     }
     res.json({ success: true });

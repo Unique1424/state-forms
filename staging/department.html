@@ -7,7 +7,7 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="stylesheet" href="base.css?v=8">
     <link rel="stylesheet" href="department.css?v=27">
-    <link rel="stylesheet" href="forms.css?v=14">
+    <link rel="stylesheet" href="forms.css?v=19">
     <script>
         (function() {
             var saved = localStorage.getItem('theme');
@@ -372,6 +372,18 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                         </button>
                     </div>
+                    <div class="field-item__row" style="margin-top:8px;gap:12px;align-items:flex-start">
+                        <div style="flex:1">
+                            <label style="display:block;font-size:12px;color:var(--slate);margin-bottom:4px">Описание</label>
+                            <textarea class="field-item__input" onchange="updateField(${i}, 'description', this.value)" oninput="autoResizeTextarea(this)" placeholder="Необязательно" style="min-height:60px;resize:none;font-family:inherit;overflow:hidden">${f.description || ''}</textarea>
+                        </div>
+                        ${(f.type === 'short_text' || f.type === 'long_text') ? `
+                            <div style="flex:1">
+                                <label style="display:block;font-size:12px;color:var(--slate);margin-bottom:4px">Placeholder</label>
+                                <input type="text" class="field-item__input" value="${escapeHtml(f.placeholder || '')}" placeholder="Необязательно" onchange="updateField(${i}, 'placeholder', this.value)">
+                            </div>
+                        ` : ''}
+                    </div>
                     ${f.type === 'select' ? `
                         <div class="field-item__options">
                             ${(f.options || []).map((opt, oi) => `
@@ -427,6 +439,95 @@
         document.getElementById('fields-list').innerHTML = renderFields();
     }
     function dragEnd(e) { e.currentTarget.classList.remove('field-item--dragging'); }
+
+    function autoResizeTextarea(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    let statsData = null;
+    let statsPeriod = 7;
+
+    async function renderStatsTab(content) {
+        content.innerHTML = `
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Загрузка статистики...</div>
+            </div>
+        `;
+
+        const res = await fetch(`/api/departments/${deptData.id}/stats?days=${statsPeriod}`);
+        if (!res.ok) {
+            content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">Ошибка загрузки статистики</div>';
+            return;
+        }
+
+        statsData = await res.json();
+
+        content.innerHTML = `
+            <div class="dept-content__header">
+                <h2 class="dept-content__title">Статистика ответов</h2>
+                <div class="stats-period-selector">
+                    <button class="btn btn--${statsPeriod === 1 ? 'primary' : 'ghost'} btn--sm" onclick="changeStatsPeriod(1)">1 день</button>
+                    <button class="btn btn--${statsPeriod === 7 ? 'primary' : 'ghost'} btn--sm" onclick="changeStatsPeriod(7)">7 дней</button>
+                    <button class="btn btn--${statsPeriod === 30 ? 'primary' : 'ghost'} btn--sm" onclick="changeStatsPeriod(30)">30 дней</button>
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stats-card">
+                    <div class="stats-card__icon" style="background:rgba(88,101,242,0.1);color:var(--blurple)">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="stats-card__content">
+                        <div class="stats-card__label">Всего ответов</div>
+                        <div class="stats-card__value">${statsData.total_responses}</div>
+                    </div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-card__icon" style="background:rgba(34,197,94,0.1);color:#22c55e">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="stats-card__content">
+                        <div class="stats-card__label">Активных форм</div>
+                        <div class="stats-card__value">${statsData.active_forms}</div>
+                    </div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-card__icon" style="background:rgba(249,115,22,0.1);color:#f97316">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="stats-card__content">
+                        <div class="stats-card__label">Средний ответов/день</div>
+                        <div class="stats-card__value">${(statsData.total_responses / statsPeriod).toFixed(1)}</div>
+                    </div>
+                </div>
+            </div>
+            ${statsData.forms.length > 0 ? `
+                <div style="margin-top:32px">
+                    <h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Статистика по формам</h3>
+                    <div class="stats-forms-list">
+                        ${statsData.forms.map(f => `
+                            <div class="stats-form-item">
+                                <div class="stats-form-item__header">
+                                    <span class="stats-form-item__name">${f.name}</span>
+                                    <span class="stats-form-item__count">${f.responses} ${f.responses === 1 ? 'ответ' : f.responses < 5 ? 'ответа' : 'ответов'}</span>
+                                </div>
+                                <div class="stats-form-item__bar">
+                                    <div class="stats-form-item__bar-fill" style="width:${statsData.total_responses > 0 ? (f.responses / statsData.total_responses * 100) : 0}%"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        `;
+    }
+
+    async function changeStatsPeriod(days) {
+        statsPeriod = days;
+        const content = document.getElementById('dept-tab-content');
+        await renderStatsTab(content);
+    }
 
     async function saveForm() {
         const name = document.getElementById('form-name').value.trim();
@@ -605,6 +706,10 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         Формы
                     </button>
+                    <button class="dept-sidebar__item ${currentTab === 'stats' ? 'active' : ''}" onclick="switchTab('stats')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 3v18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 17V9M13 17v-3M8 17v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Статистика
+                    </button>
                 </nav>
             </aside>
             <section class="dept-content" id="dept-tab-content"></section>
@@ -650,6 +755,8 @@
                 }).join('')}
                 </div>
             `;
+        } else if (currentTab === 'stats') {
+            renderStatsTab(content);
         } else {
             renderFormsTab(content);
         }
