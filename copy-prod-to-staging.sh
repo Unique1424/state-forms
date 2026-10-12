@@ -3,7 +3,19 @@
 # Создаёт отдельную базу state_forms_staging и копирует туда структуру таблиц БЕЗ данных
 set -euo pipefail
 
-MYSQL_ROOT_PASSWORD="HiX2Uz7C_S"
+# Load MySQL root password from .env
+if [ ! -f .env ]; then
+    echo "Error: .env file not found"
+    exit 1
+fi
+
+export $(grep -v '^#' .env | grep MYSQL_ROOT_PASSWORD | xargs)
+
+if [ -z "$MYSQL_ROOT_PASSWORD" ]; then
+    echo "Error: MYSQL_ROOT_PASSWORD not set in .env"
+    exit 1
+fi
+
 PROD_DB="state_forms"
 STAGING_DB="state_forms_staging"
 EXISTING_USER="state-forms-user"
