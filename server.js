@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const cors = require('cors');
 const helmet = require('helmet');
 
@@ -272,8 +272,8 @@ const formSubmitLimiter = rateLimit({
     if (req.session?.user?.id) {
       return `user_${req.session.user.id}`;
     }
-    // Используем req.ip который уже обрабатывает IPv6 корректно
-    return req.ip;
+    // ipKeyGenerator корректно нормализует IPv6 адреса (подсеть /56)
+    return ipKeyGenerator(req.ip);
   }
 });
 
