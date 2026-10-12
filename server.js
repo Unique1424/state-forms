@@ -1,10 +1,17 @@
 require('dotenv').config();
+const IS_STAGING = process.env.NODE_ENV === 'staging';
 const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const mysql = require('mysql2/promise');
 const path = require('path');
 const crypto = require('crypto');
+const multer = require('multer');
+const sharp = require('sharp');
+const fs = require('fs');
+const rateLimit = require('express-rate-limit');
+const cors = require('cors');
+const helmet = require('helmet');
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
 const IV_LENGTH = 16;
@@ -40,6 +47,18 @@ const db = mysql.createPool({
   port: parseInt(process.env.DB_PORT) || 3306,
   waitForConnections: true,
   connectionLimit: 10
+});
+
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
+  }
 });
 
 db.getConnection()
@@ -78,7 +97,7 @@ db.getConnection()
       id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
       form_id INT UNSIGNED NOT NULL,
       label VARCHAR(255) NOT NULL,
-      type ENUM('short_text', 'long_text', 'select', 'date', 'datetime') NOT NULL,
+      type ENUM('short_text', 'long_text', 'select', 'date', 'datetime', 'discord_id') NOT NULL,
       options JSON DEFAULT NULL,
       required TINYINT(1) DEFAULT 0,
       order_index INT UNSIGNED DEFAULT 0,
@@ -92,6 +111,23 @@ db.getConnection()
     try { await db.execute("ALTER TABLE form_responses MODIFY COLUMN user_id BIGINT UNSIGNED DEFAULT NULL"); } catch (e) {}
     try { await db.execute("ALTER TABLE form_responses DROP FOREIGN KEY form_responses_ibfk_2"); } catch (e) {}
     try { await db.execute("ALTER TABLE form_responses ADD CONSTRAINT form_responses_ibfk_2 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL"); } catch (e) {}
+    try { await db.execute("ALTER TABLE forms ADD COLUMN banner_url VARCHAR(500) DEFAULT NULL"); } catch (e) {}
+    try { await db.execute("ALTER TABLE forms ADD COLUMN banner_height INT DEFAULT 200"); } catch (e) {}
+    try { await db.execute("ALTER TABLE forms ADD COLUMN banner_transform VARCHAR(255) DEFAULT NULL"); } catch (e) {}
+    try { await db.execute("ALTER TABLE forms ADD COLUMN banner_scale DECIMAL(3,2) DEFAULT 1.00"); } catch (e) {}
+    try { await db.execute("ALTER TABLE forms ADD COLUMN show_timestamp TINYINT(1) DEFAULT 0"); } catch (e) {}
+    try { await db.execute("ALTER TABLE form_fields ADD COLUMN description TEXT DEFAULT NULL"); } catch (e) {}
+    try { await db.execute("ALTER TABLE form_fields ADD COLUMN placeholder VARCHAR(255) DEFAULT NULL"); } catch (e) {}
+
+    await db.execute(`CREATE TABLE IF NOT EXISTS images (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      filename VARCHAR(255) NOT NULL,
+      mime_type VARCHAR(50) NOT NULL,
+      size INT UNSIGNED NOT NULL,
+      uploaded_by BIGINT UNSIGNED DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+    )`);
 
     await db.execute(`CREATE TABLE IF NOT EXISTS form_responses (
       id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -146,30 +182,114 @@ function translit(str) {
 function parseTemplate(template, answers, fields) {
   if (!template) return null;
   let result = template;
-  
+
   // Replace field placeholders: {0}, {1}, etc.
   fields.forEach((f, i) => {
-    const value = answers[`field_${i}`] || '';
+    let value = answers[`field_${i}`] || '';
+    // Format Discord ID as mention
+    if (f.type === 'discord_id' && value) {
+      value = `<@${value}>`;
+    }
     result = result.replace(new RegExp(`\\{${i}\\}`, 'g'), value);
   });
-  
+
   // Replace field name placeholders: {name0}, {name1}, etc.
   fields.forEach((f, i) => {
     result = result.replace(new RegExp(`\\{name${i}\\}`, 'g'), f.label);
   });
-  
+
   // Parse Discord mentions: role[ID], channel[ID], user[ID]
   result = result.replace(/role\[(\d+)\]/g, '<@&$1>');
   result = result.replace(/channel\[(\d+)\]/g, '<#$1>');
   result = result.replace(/user\[(\d+)\]/g, '<@$1>');
-  
+
   // Parse links: (text)[URL] - text in (), URL in []
   result = result.replace(/\(([^)]+)\)\[(https?:\/\/[^\]]+)\]/g, '[$1]($2)');
-  
+
   return result;
 }
 
 app.set('trust proxy', 1);
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Отключаем CSP для совместимости с Discord embeds
+  crossOriginEmbedderPolicy: false
+}));
+
+// CORS configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : null,
+  process.env.NODE_ENV === 'staging' ? process.env.STAGING_URL : null
+].filter(Boolean);
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Разрешить запросы без origin (curl, Postman, same-origin)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 100, // максимум 100 запросов с одного IP
+  message: { error: 'Слишком много запросов, попробуйте позже' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Пропускаем rate limiting для статических файлов
+    return req.path.startsWith('/main/') || req.path.startsWith('/staging/') || req.path.startsWith('/src/');
+  }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 10, // максимум 10 попыток авторизации
+  message: { error: 'Слишком много попыток авторизации' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const formSubmitLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 минута
+  max: 5, // максимум 5 отправок формы в минуту
+  message: { error: 'Слишком частая отправка форм, подождите немного' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    // Для авторизованных пользователей - по user_id, иначе по IP
+    if (req.session?.user?.id) {
+      return `user_${req.session.user.id}`;
+    }
+    // Используем req.ip который уже обрабатывает IPv6 корректно
+    return req.ip;
+  }
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 минута
+  max: 30, // максимум 30 API запросов в минуту
+  message: { error: 'Превышен лимит API запросов' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Применить general limiter ко всем маршрутам
+app.use(generalLimiter);
+
+// Применить API limiter к API маршрутам
+app.use('/api/', apiLimiter);
 
 const sessionStore = new MySQLStore({
   host: process.env.DB_HOST || 'localhost',
@@ -189,7 +309,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,
+    secure: IS_STAGING ? !process.env.ALLOW_INSECURE_COOKIE : true,
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000
   }
@@ -201,12 +321,12 @@ const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI;
 
-app.get('/auth/discord', (req, res) => {
+app.get('/auth/discord', authLimiter, (req, res) => {
   const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20email`;
   res.redirect(url);
 });
 
-app.get('/auth/discord/callback', async (req, res) => {
+app.get('/auth/discord/callback', authLimiter, async (req, res) => {
   const { code } = req.query;
   if (!code) return res.status(400).send('No code provided');
 
@@ -310,7 +430,7 @@ app.put('/api/users/:id/role', async (req, res) => {
   if (caller[0].id == req.params.id) return res.status(403).json({ error: 'Cannot change own role' });
   const { role } = req.body;
   if (!['user', 'deputy_leader', 'leader', 'developer'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
-  if (role !== 'leader') {
+  if (role === 'user' || role === 'developer') {
     await db.execute('UPDATE users SET role = ?, department_id = NULL WHERE id = ?', [role, req.params.id]);
   } else {
     await db.execute('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
@@ -323,7 +443,7 @@ app.put('/api/users/:id/department', async (req, res) => {
   const [caller] = await db.execute('SELECT role FROM users WHERE discord_id = ?', [req.session.user.id]);
   if (!caller.length || caller[0].role !== 'developer') return res.status(403).json({ error: 'Forbidden' });
   const [target] = await db.execute('SELECT role FROM users WHERE id = ?', [req.params.id]);
-  if (!target.length || target[0].role !== 'leader') return res.status(403).json({ error: 'Can only assign department to leader' });
+  if (!target.length || !['leader', 'deputy_leader'].includes(target[0].role)) return res.status(403).json({ error: 'Can only assign department to leader or deputy_leader' });
   const { department_id } = req.body;
   await db.execute('UPDATE users SET department_id = ? WHERE id = ?', [department_id || null, req.params.id]);
   res.json({ success: true });
@@ -359,6 +479,51 @@ app.put('/api/departments/:id', async (req, res) => {
   try {
     await db.execute('UPDATE departments SET name = ?, short_name = ?, color = ? WHERE id = ?', [name, short_name, color || '#5865F2', req.params.id]);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/departments/:id/stats', async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
+  const days = parseInt(req.query.days) || 7;
+  const deptId = req.params.id;
+
+  try {
+    // Получаем общее количество ответов за период
+    const [totalResult] = await db.execute(
+      `SELECT COUNT(*) as count FROM form_responses fr
+       JOIN forms f ON fr.form_id = f.id
+       WHERE f.department_id = ? AND fr.submitted_at >= DATE_SUB(NOW(), INTERVAL ? DAY)`,
+      [deptId, days]
+    );
+
+    // Получаем количество активных форм (форм с хотя бы одним ответом за период)
+    const [activeFormsResult] = await db.execute(
+      `SELECT COUNT(DISTINCT f.id) as count FROM forms f
+       JOIN form_responses fr ON f.id = fr.form_id
+       WHERE f.department_id = ? AND fr.submitted_at >= DATE_SUB(NOW(), INTERVAL ? DAY)`,
+      [deptId, days]
+    );
+
+    // Получаем статистику по каждой форме
+    const [formsStats] = await db.execute(
+      `SELECT f.id, f.name, COUNT(fr.id) as responses
+       FROM forms f
+       LEFT JOIN form_responses fr ON f.id = fr.form_id
+         AND fr.submitted_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+       WHERE f.department_id = ?
+       GROUP BY f.id, f.name
+       HAVING responses > 0
+       ORDER BY responses DESC`,
+      [days, deptId]
+    );
+
+    res.json({
+      total_responses: totalResult[0].count,
+      active_forms: activeFormsResult[0].count,
+      forms: formsStats
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -420,21 +585,21 @@ app.post('/api/forms', async (req, res) => {
   try {
     const [caller] = await db.execute('SELECT id, role, department_id FROM users WHERE discord_id = ?', [req.session.user.id]);
     if (!caller.length || !['leader', 'deputy_leader', 'developer'].includes(caller[0].role)) return res.status(403).json({ error: 'Forbidden' });
-    const { name, webhook_url, slug, message_template, embed_color, fields } = req.body;
+    const { name, webhook_url, slug, message_template, embed_color, fields, show_timestamp, banner_url, banner_height, banner_transform, banner_scale } = req.body;
     if (!name) return res.status(400).json({ error: 'Name required' });
     const deptId = caller[0].role === 'developer' ? (req.body.department_id || caller[0].department_id) : caller[0].department_id;
     if (!deptId) return res.status(400).json({ error: 'Department required' });
     const formSlug = slug || translit(name);
     const colorHex = embed_color || '#5865F2';
     const colorInt = parseInt(colorHex.replace('#', ''), 16);
-    const [result] = await db.execute('INSERT INTO forms (department_id, name, webhook_url, slug, message_template, embed_color, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [deptId, name, webhook_url ? encrypt(webhook_url) : null, formSlug, message_template || null, colorHex, caller[0].id]);
+    const [result] = await db.execute('INSERT INTO forms (department_id, name, webhook_url, slug, message_template, embed_color, show_timestamp, banner_url, banner_height, banner_transform, banner_scale, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [deptId, name, webhook_url ? encrypt(webhook_url) : null, formSlug, message_template || null, colorHex, show_timestamp ? 1 : 0, banner_url || null, banner_height || 200, banner_transform || null, banner_scale || 1, caller[0].id]);
     const formId = result.insertId;
     if (fields && fields.length) {
       for (let i = 0; i < fields.length; i++) {
         const f = fields[i];
-        await db.execute('INSERT INTO form_fields (form_id, label, type, options, required, order_index) VALUES (?, ?, ?, ?, ?, ?)',
-          [formId, f.label, f.type, f.options ? JSON.stringify(f.options) : null, f.required ? 1 : 0, i]);
+        await db.execute('INSERT INTO form_fields (form_id, label, type, options, required, order_index, description, placeholder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [formId, f.label, f.type, f.options ? JSON.stringify(f.options) : null, f.required ? 1 : 0, i, f.description || null, f.placeholder || null]);
       }
     }
     res.json({ success: true, id: formId });
@@ -466,18 +631,23 @@ app.put('/api/forms/:id', async (req, res) => {
     const [form] = await db.execute('SELECT * FROM forms WHERE id = ?', [req.params.id]);
     if (!form.length) return res.status(404).json({ error: 'Not found' });
     if (caller[0].role !== 'developer' && form[0].department_id !== caller[0].department_id) return res.status(403).json({ error: 'Forbidden' });
-    const { name, webhook_url, slug, message_template, embed_color, fields } = req.body;
+    const { name, webhook_url, slug, message_template, embed_color, fields, show_timestamp, banner_url, banner_height, banner_transform, banner_scale } = req.body;
     const formSlug = slug || (name ? translit(name) : form[0].slug);
     const encryptedWebhook = webhook_url !== undefined ? (webhook_url ? encrypt(webhook_url) : null) : form[0].webhook_url;
     const templateValue = message_template !== undefined ? (message_template || null) : form[0].message_template;
     const colorValue = embed_color !== undefined ? embed_color : (form[0].embed_color || '#5865F2');
-    await db.execute('UPDATE forms SET name = ?, webhook_url = ?, slug = ?, message_template = ?, embed_color = ? WHERE id = ?', [name || form[0].name, encryptedWebhook, formSlug, templateValue, colorValue, req.params.id]);
+    const timestampValue = show_timestamp !== undefined ? (show_timestamp ? 1 : 0) : form[0].show_timestamp;
+    const bannerValue = banner_url !== undefined ? (banner_url || null) : form[0].banner_url;
+    const bannerHeightValue = banner_height !== undefined ? banner_height : (form[0].banner_height || 200);
+    const bannerTransformValue = banner_transform !== undefined ? (banner_transform || null) : form[0].banner_transform;
+    const bannerScaleValue = banner_scale !== undefined ? banner_scale : (form[0].banner_scale || 1);
+    await db.execute('UPDATE forms SET name = ?, webhook_url = ?, slug = ?, message_template = ?, embed_color = ?, show_timestamp = ?, banner_url = ?, banner_height = ?, banner_transform = ?, banner_scale = ? WHERE id = ?', [name || form[0].name, encryptedWebhook, formSlug, templateValue, colorValue, timestampValue, bannerValue, bannerHeightValue, bannerTransformValue, bannerScaleValue, req.params.id]);
     if (fields) {
       await db.execute('DELETE FROM form_fields WHERE form_id = ?', [req.params.id]);
       for (let i = 0; i < fields.length; i++) {
         const f = fields[i];
-        await db.execute('INSERT INTO form_fields (form_id, label, type, options, required, order_index) VALUES (?, ?, ?, ?, ?, ?)',
-          [req.params.id, f.label, f.type, f.options ? JSON.stringify(f.options) : null, f.required ? 1 : 0, i]);
+        await db.execute('INSERT INTO form_fields (form_id, label, type, options, required, order_index, description, placeholder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [req.params.id, f.label, f.type, f.options ? JSON.stringify(f.options) : null, f.required ? 1 : 0, i, f.description || null, f.placeholder || null]);
       }
     }
     res.json({ success: true });
@@ -515,7 +685,7 @@ app.get('/api/forms/view/:deptSlug/:formSlug', async (req, res) => {
   }
 });
 
-app.post('/api/forms/:id/submit', async (req, res) => {
+app.post('/api/forms/:id/submit', formSubmitLimiter, async (req, res) => {
   try {
     const { answers } = req.body;
     if (!answers) return res.status(400).json({ error: 'Answers required' });
@@ -533,7 +703,9 @@ app.post('/api/forms/:id/submit', async (req, res) => {
         const embedTitle = truncate(form[0].name, 256);
         const embedColor = parseInt((form[0].embed_color || '#5865F2').replace('#', ''), 16);
         const embeds = [];
-        let currentEmbed = { title: embedTitle, color: embedColor, fields: [] };
+        const embedFooter = { text: 'state-forms.site', icon_url: 'https://i.imgur.com/gcOoR7s.png' };
+        const embedTimestamp = form[0].show_timestamp ? new Date().toISOString() : undefined;
+        let currentEmbed = { title: embedTitle, color: embedColor, fields: [], footer: embedFooter, timestamp: embedTimestamp };
         let totalChars = embedTitle.length;
         let fieldCount = 0;
 
@@ -556,6 +728,9 @@ app.post('/api/forms/:id/submit', async (req, res) => {
             }
             return value;
           }
+          if (type === 'discord_id') {
+            return `<@${value}>`;
+          }
           return value;
         }
 
@@ -569,7 +744,7 @@ app.post('/api/forms/:id/submit', async (req, res) => {
           if (fieldCount >= 25 || totalChars + fieldChars > 5900) {
             embeds.push(currentEmbed);
             if (embeds.length >= 10) break;
-            currentEmbed = { title: embedTitle, color: embedColor, fields: [] };
+            currentEmbed = { title: embedTitle, color: embedColor, fields: [], footer: embedFooter, timestamp: embedTimestamp };
             totalChars = embedTitle.length;
             fieldCount = 0;
           }
@@ -600,20 +775,71 @@ app.post('/api/forms/:id/submit', async (req, res) => {
   }
 });
 
+const FRONTEND_DIR = path.join(__dirname, IS_STAGING ? 'staging' : 'main');
+
 app.get('/department', (req, res) => {
-  res.sendFile(path.join(__dirname, 'main', 'department.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'department.html'));
+});
+
+app.post('/api/images/upload', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const filename = crypto.randomBytes(8).toString('hex') + '.webp';
+    const resized = await sharp(req.file.buffer)
+      .resize(1920, 600, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    fs.writeFileSync(path.join(uploadsDir, filename), resized);
+    const userId = req.session.user ? (await db.execute('SELECT id FROM users WHERE discord_id = ?', [req.session.user.id]))[0][0]?.id : null;
+    const [result] = await db.execute(
+      'INSERT INTO images (filename, original_name, mime_type, size, uploaded_by) VALUES (?, ?, ?, ?, ?)',
+      [filename, req.file.originalname, 'image/webp', resized.length, userId]
+    );
+    res.json({ success: true, id: result.insertId, url: `/i/${result.insertId}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/i/:id', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT * FROM images WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const img = rows[0];
+    const filePath = path.join(uploadsDir, img.filename);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+    res.setHeader('Content-Type', img.mime_type);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/i/:id', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT * FROM images WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const img = rows[0];
+    const filePath = path.join(uploadsDir, img.filename);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    await db.execute('DELETE FROM images WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'main', 'admin.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'admin.html'));
 });
 
 app.get('/:deptSlug/:formSlug', (req, res) => {
-  res.sendFile(path.join(__dirname, 'main', 'form-view.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'form-view.html'));
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'main', 'index.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
 });
 
 app.listen(PORT, '127.0.0.1', () => {

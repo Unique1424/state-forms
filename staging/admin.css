@@ -1,0 +1,138 @@
+/* === Admin Page === */
+.admin-page {
+  padding: 100px 24px 60px;
+  background: var(--paper);
+  min-height: 100vh;
+}
+.admin-page__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.admin-page__title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 32px;
+}
+.admin-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+}
+.admin-section__title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+.admin-assign {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.admin-input {
+  padding: 10px 14px;
+  border: 1.5px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--font-mono);
+  width: 200px;
+}
+.admin-input:focus {
+  border-color: var(--blurple);
+  outline: none;
+}
+.admin-select {
+  padding: 10px 14px;
+  border: 1.5px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--white);
+  cursor: pointer;
+}
+.admin-select:focus {
+  border-color: var(--blurple);
+  outline: none;
+}
+.admin-select--sm {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.admin-table-wrap { overflow-x: auto; }
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.admin-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--slate);
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.admin-table td {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  vertical-align: middle;
+}
+.admin-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-user__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+.admin-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--slate);
+}
+.admin-copy {
+  cursor: pointer;
+  transition: color var(--transition);
+}
+.admin-copy:hover { color: var(--blurple); }
+.admin-copy--done {
+  color: var(--mint) !important;
+  font-weight: 600;
+}
+.admin-dept-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-dept-none {
+  color: var(--slate);
+  font-size: 13px;
+}
+
+/* === Responsive === */
+@media (max-width: 600px) {
+  .admin-assign { flex-direction: column; }
+  .admin-input { width: 100%; }
+}
+
+/* === Dark Theme Admin === */
+[data-theme="dark"] .admin-input,
+[data-theme="dark"] .admin-select {
+  border-color: rgba(255,255,255,0.1);
+  background: #0D1117;
+  color: var(--ink);
+}
+
+[data-theme="dark"] .admin-table th {
+  border-bottom-color: rgba(255,255,255,0.06);
+}
+
+[data-theme="dark"] .admin-table td {
+  border-bottom-color: rgba(255,255,255,0.04);
+}

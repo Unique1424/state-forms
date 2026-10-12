@@ -1,2 +1,67 @@
-.env
+# Dependencies
 node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.staging
+.env.production
+
+# Uploads (user-generated content)
+uploads/*
+!uploads/.gitkeep
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Build
+dist/
+build/
+*.tgz
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.backup
+*.bak
+*.cache
+
+# PM2
+.pm2/
+ecosystem.config.js.bak
