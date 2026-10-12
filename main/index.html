@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>State Forms — Кастомные формы с отправкой в Discord</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="base.css?v=8">
+    <link rel="stylesheet" href="home.css?v=2">
+    <script>
+        (function() {
+            var saved = localStorage.getItem('theme');
+            var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav__inner">
+        <a href="#" class="nav__logo">
+            <img src="../src/logo.png" alt="State Forms" class="nav__logo-img">
+            <span class="nav__logo-text">State Forms</span>
+        </a>
+        <div class="nav__links">
+            <a href="#features">Возможности</a>
+            <a href="#how">Как это работает</a>
+            <a href="#access">Получить доступ</a>
+        </div>
+        <div class="nav__user" id="nav-user" style="display:none">
+            <button class="nav__btn nav__btn--discord" id="auth-btn" type="button">
+            <svg width="18" height="14" viewBox="0 0 24 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="white"/>
+            </svg>
+            <span id="auth-label">Войти</span>
+            </button>
+            <div class="nav__dropdown" id="nav-dropdown">
+            <div class="nav__dropdown-header">
+                <span class="nav__dropdown-role" id="dropdown-role">Пользователь</span>
+            </div>
+            <a href="/department" class="nav__dropdown-item" id="btn-department" style="display:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 21h18M3 7v14M21 7v14M6 11h.01M6 15h.01M6 19h.01M10 11h.01M10 15h.01M10 19h.01M14 11h.01M14 15h.01M14 19h.01M18 11h.01M18 15h.01M18 19h.01M9 7a3 3 0 116 0v0a3 3 0 01-6 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Открыть ведомство
+            </a>
+            <a href="/admin" class="nav__dropdown-item" id="btn-admin" style="display:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Админ панель
+            </a>
+            <div class="nav__dropdown-divider"></div>
+            <a href="/auth/logout" class="nav__dropdown-item nav__dropdown-item--logout">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Выйти
+            </a>
+            </div>
+        </div>
+        <a href="/auth/discord" id="auth-btn-guest" class="nav__btn nav__btn--discord">
+            <svg width="18" height="14" viewBox="0 0 24 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="white"/>
+            </svg>
+            Войти
+        </a>
+        <button class="theme-toggle" type="button" title="Переключить тему">
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero__inner">
+        <div class="hero__content">
+            <div class="hero__badge">
+            <svg width="16" height="16" viewBox="0 0 24 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="#5865F2"/>
+            </svg>
+            <span>Интеграция с Discord</span>
+            </div>
+            <h1 class="hero__title">Формы, которые<br><span class="hero__title-accent">говорят в Discord</span></h1>
+            <p class="hero__desc">Создавайте кастомные формы без кода. Ответы приходят прямо в ваш Discord-канал через webhooks — мгновенно и красиво.</p>
+            <div class="hero__actions">
+            <a href="/auth/discord" class="btn btn--discord" id="hero-login-btn">
+                <svg width="20" height="16" viewBox="0 0 24 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="white"/>
+                </svg>
+                Войти через Discord
+            </a>
+            <a href="#how" class="btn btn--ghost">Как это работает</a>
+            </div>
+            <div class="hero__stats">
+            <div class="hero__stat">
+                <span class="hero__stat-num">0</span>
+                <span class="hero__stat-label">Форм создано</span>
+            </div>
+            <div class="hero__stat">
+                <span class="hero__stat-num">0                                                          </span>
+                <span class="hero__stat-label">Серверов</span>
+            </div>
+            <div class="hero__stat">
+                <span class="hero__stat-num">&lt;1с</span>
+                <span class="hero__stat-label">Доставка</span>
+            </div>
+            </div>
+        </div>
+        <div class="hero__preview">
+            <div class="preview">
+            <div class="preview__toolbar">
+                <div class="preview__dots">
+                <span></span><span></span><span></span>
+                </div>
+                <span class="preview__title">Конструктор форм</span>
+            </div>
+            <div class="preview__body">
+                <div class="preview__field preview__field--animate-1">
+                <div class="preview__field-label">Заголовок</div>
+                <div class="preview__field-input">Заявка на вступление</div>
+                </div>
+                <div class="preview__field preview__field--animate-2">
+                <div class="preview__field-label">Поле 1</div>
+                <div class="preview__field-input">Ваш никнейм</div>
+                </div>
+                <div class="preview__field preview__field--animate-3">
+                <div class="preview__field-label">Поле 2</div>
+                <div class="preview__field-input">Почему хотите вступить?</div>
+                </div>
+                <div class="preview__field preview__field--animate-4">
+                <div class="preview__field-label">Webhook URL</div>
+                <div class="preview__field-input preview__field-input--blurple">https://discord.com/api/webhooks/...</div>
+                </div>
+                <div class="preview__btn">Создать форму</div>
+            </div>
+            <!-- Discord message popup -->
+            <div class="preview__discord">
+                <div class="preview__discord-header">
+                <svg width="20" height="16" viewBox="0 0 24 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="#5865F2"/>
+                </svg>
+                <span>State Forms Bot</span>
+                <span class="preview__discord-badge">BOT</span>
+                </div>
+                <div class="preview__discord-embed">
+                <div class="preview__discord-embed-bar"></div>
+                <div class="preview__discord-embed-title">Заявка на вступление</div>
+                <div class="preview__discord-embed-field">
+                    <span class="preview__discord-embed-label">Ваш никнейм</span>
+                    <span class="preview__discord-embed-value">DarkKnight#7777</span>
+                </div>
+                <div class="preview__discord-embed-field">
+                    <span class="preview__discord-embed-label">Почему хотите вступить?</span>
+                    <span class="preview__discord-embed-value">Хочу быть частью сообщества!</span>
+                </div>
+                </div>
+            </div>
+            </div>
+        </div>
+        </div>
+        <div class="hero__gradient"></div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="features__inner">
+        <div class="features__header">
+            <span class="features__eyebrow">Возможности</span>
+            <h2 class="features__title">Всё, что нужно<br>для идеальных форм</h2>
+            <p class="features__desc">Никакого кода. Никаких сложных настроек. Просто создайте форму и подключите Discord.</p>
+        </div>
+        <div class="features__grid">
+            <div class="feature-card">
+            <div class="feature-card__icon">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect x="4" y="8" width="24" height="16" rx="3" stroke="currentColor" stroke-width="2"/>
+                <line x1="10" y1="14" x2="22" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <line x1="10" y1="18" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h3 class="feature-card__title">Визуальный конструктор</h3>
+            <p class="feature-card__desc">Перетаскивайте поля, настраивайте валидацию, выбирайте стили — всё в drag & drop интерфейсе.</p>
+            </div>
+            <div class="feature-card">
+            <div class="feature-card__icon">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <path d="M16 2C8.27 2 2 8.27 2 16s6.27 14 14 14 14-6.27 14-14S23.73 2 16 2z" stroke="currentColor" stroke-width="2"/>
+                <path d="M21 11L14 19L11 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h3 class="feature-card__title">Мгновенная доставка</h3>
+            <p class="feature-card__desc">Ответы появляются в Discord за доли секунды. Embed-сообщения с красивым форматированием.</p>
+            </div>
+            <div class="feature-card">
+            <div class="feature-card__icon">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect x="4" y="4" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+                <rect x="18" y="4" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+                <rect x="4" y="18" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+                <rect x="18" y="18" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <h3 class="feature-card__title">Типы полей</h3>
+            <p class="feature-card__desc">Текст, числа, выбор из списка, чекбоксы, файлы и многое другое. Всё что нужно для любой формы.</p>
+            </div>
+            <div class="feature-card">
+            <div class="feature-card__icon">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <path d="M6 6h20v20H6z" stroke="currentColor" stroke-width="2"/>
+                <path d="M6 12h20M16 6v20" stroke="currentColor" stroke-width="2"/>
+                <circle cx="24" cy="8" r="4" fill="var(--blurple)" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <h3 class="feature-card__title">Кастомный дизайн</h3>
+            <p class="feature-card__desc">Настраивайте цвета, шрифты и структуру формы под стиль вашего бренда или сервера.</p>
+            </div>
+            <div class="feature-card">
+            <div class="feature-card__icon">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <path d="M16 4v8l6 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="16" cy="16" r="12" stroke="currentColor" stroke-width="2"/>
+                <path d="M4 16a12 12 0 0124 0" stroke="var(--blurple)" stroke-width="2"/>
+                </svg>
+            </div>
+            <h3 class="feature-card__title">История ответов</h3>
+            <p class="feature-card__desc">Все ответы сохраняются в личном кабинете. Экспорт в CSV, поиск и фильтрация.</p>
+            </div>
+            <div class="feature-card">
+            <div class="feature-card__icon">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect x="6" y="10" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                <path d="M10 10V8a6 6 0 0112 0v2" stroke="currentColor" stroke-width="2"/>
+                <circle cx="16" cy="18" r="2" fill="currentColor"/>
+                </svg>
+            </div>
+            <h3 class="feature-card__title">Безопасность</h3>
+            <p class="feature-card__desc">Webhook URL хранится шифровано. Антиспам-защита и rate limiting из коробки.</p>
+            </div>
+        </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="how" id="how">
+        <div class="how__inner">
+        <div class="how__header">
+            <span class="how__eyebrow">Как это работает</span>
+            <h2 class="how__title">Три шага до<br>первого ответа</h2>
+        </div>
+        <div class="how__steps">
+            <div class="how__step">
+            <div class="how__step-num">01</div>
+            <div class="how__step-content">
+                <h3 class="how__step-title">Создайте форму</h3>
+                <p class="how__step-desc">Используйте визуальный конструктор — добавьте поля, настройте валидацию и внешний вид. Это занимает пару минут.</p>
+            </div>
+            <div class="how__step-visual">
+                <div class="step-visual step-visual--build">
+                <div class="step-visual__field"></div>
+                <div class="step-visual__field step-visual__field--short"></div>
+                <div class="step-visual__field step-visual__field--area"></div>
+                <div class="step-visual__line"></div>
+                <div class="step-visual__btn"></div>
+                </div>
+            </div>
+            </div>
+            <div class="how__step">
+            <div class="how__step-num">02</div>
+            <div class="how__step-content">
+                <h3 class="how__step-title">Подключите Discord</h3>
+                <p class="how__step-desc">Вставьте Webhook URL из настроек вашего Discord-канала. Мы проверим соединение и покажем тестовое сообщение.</p>
+            </div>
+            <div class="how__step-visual">
+                <div class="step-visual step-visual--connect">
+                <div class="step-visual__url">
+                    <span class="step-visual__protocol">https://</span>discord.com/api/webhooks/...
+                </div>
+                <div class="step-visual__status">
+                    <span class="step-visual__dot"></span> Подключено
+                </div>
+                </div>
+            </div>
+            </div>
+            <div class="how__step">
+            <div class="how__step-num">03</div>
+            <div class="how__step-content">
+                <h3 class="how__step-title">Получайте ответы</h3>
+                <p class="how__step-desc">Поделитесь ссылкой на форму. Каждый ответ мгновенно появляется в Discord как красивое embed-сообщение.</p>
+            </div>
+            <div class="how__step-visual">
+                <div class="step-visual step-visual--receive">
+                <div class="step-visual__embed">
+                    <div class="step-visual__embed-bar"></div>
+                    <div class="step-visual__embed-title">Новая заявка</div>
+                    <div class="step-visual__embed-line"></div>
+                    <div class="step-visual__embed-line step-visual__embed-line--short"></div>
+                </div>
+                <div class="step-visual__arrow">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                </div>
+            </div>
+            </div>
+        </div>
+        </div>
+    </section>
+
+    <!-- Access -->
+    <section class="access" id="access">
+        <div class="access__inner">
+        <div class="access__icon">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <path d="M24 4L8 14v14c0 9.4 6.8 18.2 16 20 9.2-1.8 16-10.6 16-20V14L24 4z" stroke="var(--blurple)" stroke-width="2.5" fill="none"/>
+            <path d="M18 24l4 4 8-8" stroke="var(--blurple)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h2 class="access__title">Получите доступ к созданию форм</h2>
+        <p class="access__desc">Доступ к конструктору форм открывается для лидеров после подтверждения через <a href="https://discord.gg/t4bQ8k4HKw" target="_blank" rel="noopener noreferrer" style="color:var(--blurple);text-decoration:underline;">Discord-сообщество проекта</a>.</p>
+        <div id="access-content">
+        <a href="/auth/discord" class="btn btn--discord btn--large" id="access-login-btn">
+            <svg width="20" height="16" viewBox="0 0 24 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="white"/>
+            </svg>
+            Войти через Discord
+        </a>
+        </div>
+        <div class="access__decoration">
+            <div class="access__circle access__circle--1"></div>
+            <div class="access__circle access__circle--2"></div>
+        </div>
+        </div>
+    </section>
+
+        <!-- User Profile (hidden by default) -->
+    <section class="profile" id="profile" style="display:none">
+        <div class="profile__inner">
+        <div class="profile__card">
+            <div class="profile__header">
+            <div class="profile__avatar-wrap">
+                <img id="profile-avatar" class="profile__avatar" src="" alt="Avatar">
+                <div class="profile__status"></div>
+            </div>
+            <div class="profile__info">
+                <h3 id="profile-username" class="profile__username"></h3>
+                <div class="profile__badge">
+                <svg width="14" height="11" viewBox="0 0 24 18" fill="none">
+                    <path d="M19.7 1.5A19.8 19.8 0 0014.8 0a.1.1 0 00-.1.04c-.2.4-.4.9-.6 1.2-1.8-.3-3.7-.3-5.5 0-.2-.4-.4-.9-.6-1.2a.1.1 0 00-.1-.04A19.7 19.7 0 001.5 1.5a.1.1 0 000 .03C-.5 6 .0 10.5.4 15a.1.1 0 000 .06c2 1.5 4 2.4 6 3a.1.1 0 00.1-.03c.5-.6.9-1.3 1.2-2a.1.1 0 00-.1-.1c-.7-.2-1.3-.5-1.9-.9a.1.1 0 010-.1c.1-.1.3-.2.4-.3a.1.1 0 01.1 0c3.9 1.8 8.2 1.8 12.1 0a.1.1 0 01.1 0l.4.3a.1.1 0 010 .1c-.6.4-1.2.7-1.9.9a.1.1 0 00-.1.1c.4.7.8 1.3 1.2 2a.1.1 0 00.1.03c2-.6 4-1.5 6-3a.1.1 0 000-.06c.6-5.2-1-9.7-3.8-13.7a.1.1 0 000-.03zM8 12.6c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-1 2.4-2.2 2.4zm8 0c-1.2 0-2.2-1.1-2.2-2.4 0-1.3 1-2.4 2.2-2.4 1.2 0 2.2 1.1 2.2 2.4 0 1.3-.9 2.4-2.2 2.4z" fill="currentColor"/>
+                </svg>
+                Авторизован через Discord
+                </div>
+            </div>
+            <a href="/auth/logout" class="btn btn--ghost profile__logout">Выйти</a>
+            </div>
+        </div>
+        </div>
+    </section>
+
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer__inner">
+        <div class="footer__brand">
+            <div class="footer__logo">
+            <img src="src/logo.png" alt="State Forms" class="footer__logo-img">
+            <span class="nav__logo-text">State Forms</span>
+            </div>
+            <p class="footer__tagline">Кастомные формы с мгновенной доставкой в Discord.</p>
+        </div>
+        <div class="footer__links">
+            <div class="footer__col">
+            <h4 class="footer__col-title">Продукт</h4>
+            <a href="#features">Возможности</a>
+            <a href="#how">Как это работает</a>
+            <a href="#">Документация</a>
+            </div>
+            <div class="footer__col">
+            <h4 class="footer__col-title">Сообщество</h4>
+            <a href="#">Discord-сервер</a>
+            <a href="#">Обратная связь</a>
+            <a href="#access">Получить доступ</a>
+            </div>
+            <div class="footer__col">
+            <h4 class="footer__col-title">Правовое</h4>
+            <a href="#">Конфиденциальность</a>
+            <a href="#">Условия</a>
+            </div>
+        </div>
+        </div>
+        <div class="footer__bottom">
+        <span>&copy; 2026 State Forms. Все права защищены.</span>
+        </div>
+    </footer>
+
+    <script src="script.js?v=18"></script>
+
+</body>
+</html>
