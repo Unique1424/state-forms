@@ -267,9 +267,13 @@ const formSubmitLimiter = rateLimit({
   message: { error: 'Слишком частая отправка форм, подождите немного' },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
+  keyGenerator: (req, res) => {
     // Для авторизованных пользователей - по user_id, иначе по IP
-    return req.session?.user?.id || req.ip;
+    if (req.session?.user?.id) {
+      return `user_${req.session.user.id}`;
+    }
+    // Используем req.ip который уже обрабатывает IPv6 корректно
+    return req.ip;
   }
 });
 
