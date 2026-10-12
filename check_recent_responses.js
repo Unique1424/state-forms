@@ -14,7 +14,7 @@ const mysql = require('mysql2/promise');
   
   const [rows] = await db.execute(`
     SELECT id, form_id, submitted_at, 
-           CONVERT_TZ(submitted_at, '+00:00', '+03:00') as msk_time
+    CONVERT_TZ(submitted_at, '+00:00', '+03:00') as msk_time
     FROM form_responses 
     ORDER BY submitted_at DESC 
     LIMIT 10
