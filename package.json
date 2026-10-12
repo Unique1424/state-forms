@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:staging": "node server-staging.js"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
     "express-mysql-session": "^3.0.3",
+    "express-rate-limit": "^8.7.1",
     "express-session": "^1.18.0",
+    "helmet": "^8.3.0",
     "multer": "^2.2.0",
     "mysql2": "^3.23.1",
     "sharp": "^0.35.3"

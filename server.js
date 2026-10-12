@@ -1,4 +1,5 @@
 require('dotenv').config();
+const IS_STAGING = process.env.NODE_ENV === 'staging';
 const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
@@ -8,6 +9,9 @@ const crypto = require('crypto');
 const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
+const cors = require('cors');
+const helmet = require('helmet');
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
 const IV_LENGTH = 16;
@@ -207,6 +211,82 @@ function parseTemplate(template, answers, fields) {
 
 app.set('trust proxy', 1);
 
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Отключаем CSP для совместимости с Discord embeds
+  crossOriginEmbedderPolicy: false
+}));
+
+// CORS configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : null,
+  process.env.NODE_ENV === 'staging' ? process.env.STAGING_URL : null
+].filter(Boolean);
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Разрешить запросы без origin (curl, Postman, same-origin)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 100, // максимум 100 запросов с одного IP
+  message: { error: 'Слишком много запросов, попробуйте позже' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Пропускаем rate limiting для статических файлов
+    return req.path.startsWith('/main/') || req.path.startsWith('/staging/') || req.path.startsWith('/src/');
+  }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 10, // максимум 10 попыток авторизации
+  message: { error: 'Слишком много попыток авторизации' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const formSubmitLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 минута
+  max: 5, // максимум 5 отправок формы в минуту
+  message: { error: 'Слишком частая отправка форм, подождите немного' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Для авторизованных пользователей - по user_id, иначе по IP
+    return req.session?.user?.id || req.ip;
+  }
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 минута
+  max: 30, // максимум 30 API запросов в минуту
+  message: { error: 'Превышен лимит API запросов' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Применить general limiter ко всем маршрутам
+app.use(generalLimiter);
+
+// Применить API limiter к API маршрутам
+app.use('/api/', apiLimiter);
+
 const sessionStore = new MySQLStore({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER,
@@ -225,7 +305,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,
+    secure: IS_STAGING ? !process.env.ALLOW_INSECURE_COOKIE : true,
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000
   }
@@ -237,12 +317,12 @@ const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI;
 
-app.get('/auth/discord', (req, res) => {
+app.get('/auth/discord', authLimiter, (req, res) => {
   const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20email`;
   res.redirect(url);
 });
 
-app.get('/auth/discord/callback', async (req, res) => {
+app.get('/auth/discord/callback', authLimiter, async (req, res) => {
   const { code } = req.query;
   if (!code) return res.status(400).send('No code provided');
 
@@ -601,7 +681,7 @@ app.get('/api/forms/view/:deptSlug/:formSlug', async (req, res) => {
   }
 });
 
-app.post('/api/forms/:id/submit', async (req, res) => {
+app.post('/api/forms/:id/submit', formSubmitLimiter, async (req, res) => {
   try {
     const { answers } = req.body;
     if (!answers) return res.status(400).json({ error: 'Answers required' });
@@ -691,8 +771,10 @@ app.post('/api/forms/:id/submit', async (req, res) => {
   }
 });
 
+const FRONTEND_DIR = path.join(__dirname, IS_STAGING ? 'staging' : 'main');
+
 app.get('/department', (req, res) => {
-  res.sendFile(path.join(__dirname, 'main', 'department.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'department.html'));
 });
 
 app.post('/api/images/upload', upload.single('image'), async (req, res) => {
@@ -745,15 +827,15 @@ app.delete('/i/:id', async (req, res) => {
 });
 
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'main', 'admin.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'admin.html'));
 });
 
 app.get('/:deptSlug/:formSlug', (req, res) => {
-  res.sendFile(path.join(__dirname, 'main', 'form-view.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'form-view.html'));
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'main', 'index.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
 });
 
 app.listen(PORT, '127.0.0.1', () => {
