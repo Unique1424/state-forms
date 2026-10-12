@@ -1,0 +1,28 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+commit_msg=$(cat "$1")
+pattern="^(feat|fix|docs|style|refactor|perf|test|chore|revert|build|ci)(\(.+\))?: .{1,}"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+    echo ""
+    echo "❌ Ошибка: коммит-сообщение не соответствует формату Conventional Commits"
+    echo ""
+    echo "Правильный формат: <type>: <description>"
+    echo ""
+    echo "Допустимые типы:"
+    echo "  feat     - новая функциональность"
+    echo "  fix      - исправление бага"
+    echo "  docs     - изменения в документации"
+    echo "  style    - форматирование кода"
+    echo "  refactor - рефакторинг"
+    echo "  perf     - улучшение производительности"
+    echo "  test     - тесты"
+    echo "  chore    - рутинные задачи"
+    echo ""
+    echo "Примеры:"
+    echo "  feat: добавлена статистика департамента"
+    echo "  fix: исправлена ошибка загрузки форм"
+    echo ""
+    exit 1
+fi
